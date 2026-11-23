@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Councillion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@75..125,500..900&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: a single-column "public notice" board. Each prompt is a yellow
+   council notice pinned to the page; answers come back with a rubber stamp. */
+:root{
+  --paper:#eef0ea;
+  --card:#ffffff;
+  --ink:#16213a;
+  --muted:#5a6375;
+  --line:#cfd4cc;
+  --civic:#00703c;
+  --civic-ink:#ffffff;
+  --notice:#ffdd3c;
+  --notice-ink:#1a1a12;
+  --alert:#b3261e;
+  --t1:#8a93a3; --t2:#2f6fd6; --t3:#00843f; --t4:#c79a00; --t5:#d8641b; --t6:#7b3fc4;
+  --display:"Archivo","Arial Narrow",system-ui,sans-serif;
+  --body:"Public Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#0f1522; --card:#182134; --ink:#e9edf4; --muted:#9aa4b8; --line:#2a3550;
+    --civic:#36c27f; --civic-ink:#06140d; --notice:#e9c63a; --notice-ink:#16140a; --alert:#ff6b5e;
+    --t1:#a3adbf; --t2:#6ea2ff; --t3:#36c27f; --t4:#e9c63a; --t5:#ff8a45; --t6:#b48cff;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#0f1522; --card:#182134; --ink:#e9edf4; --muted:#9aa4b8; --line:#2a3550;
+  --civic:#36c27f; --civic-ink:#06140d; --notice:#e9c63a; --notice-ink:#16140a; --alert:#ff6b5e;
+  --t1:#a3adbf; --t2:#6ea2ff; --t3:#36c27f; --t4:#e9c63a; --t5:#ff8a45; --t6:#b48cff;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+main{max-width:560px;margin:0 auto;padding:20px 16px 48px;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;line-height:1.05}
+button{font:inherit;cursor:pointer}
+:focus-visible{outline:3px solid var(--civic);outline-offset:2px}
+.mast{display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:3px solid var(--ink);padding-bottom:10px}
+.logo{font-family:var(--display);font-weight:900;font-stretch:115%;font-size:28px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+.crest{width:30px;height:30px;flex:none}
+.mast small{font-size:12px;color:var(--muted);text-align:right;line-height:1.3;font-variant-numeric:tabular-nums}
+.notice{background:var(--notice);color:var(--notice-ink);border-radius:4px;box-shadow:0 1px 0 rgba(0,0,0,.08),0 10px 24px -14px rgba(0,0,0,.45);overflow:hidden}
+.notice-head{display:flex;justify-content:space-between;align-items:center;gap:8px;background:var(--notice-ink);color:var(--notice);padding:7px 14px;font-family:var(--display);font-weight:800;font-stretch:120%;font-size:12px;letter-spacing:.14em;text-transform:uppercase}
+.notice-body{padding:20px 18px 18px;display:flex;flex-direction:column;gap:14px}
+.notice h2{font-size:clamp(26px,7vw,34px);font-weight:850;font-stretch:90%}
+.notice p{margin:0}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:6px;padding:16px 16px;display:flex;flex-direction:column;gap:12px}
+.panel h3{font-size:15px;font-weight:800;font-stretch:115%;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.btn{border:0;border-radius:4px;padding:14px 18px;font-weight:700;font-size:17px;background:var(--civic);color:var(--civic-ink);display:inline-flex;justify-content:center;align-items:center;gap:8px}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--ink)}
+.btn.dark{background:var(--notice-ink);color:var(--notice)}
+.btn:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row>.btn{flex:1 1 160px}
+.muted{color:var(--muted)}
+.small{font-size:14px}
+.tiers{display:grid;grid-template-columns:auto 1fr auto;gap:6px 12px;align-items:center;font-size:14px}
+.chip{display:inline-block;width:14px;height:14px;border-radius:3px}
+.num{font-variant-numeric:tabular-nums;font-weight:700;text-align:right}
+.timer{height:8px;background:rgba(0,0,0,.14);border-radius:99px;overflow:hidden}
+.timer i{display:block;height:100%;width:100%;background:var(--notice-ink);transform-origin:left;transition:background .2s}
+.timer.low i{background:var(--alert)}
+.answer{display:flex;gap:8px}
+.answer input{flex:1;min-width:0;font:inherit;font-size:18px;padding:12px 12px;border:2px solid var(--notice-ink);border-radius:4px;background:#fffdf2;color:#1a1a12}
+.answer .btn{padding:12px 16px}
+.meta{display:flex;justify-content:space-between;font-size:13px;font-weight:600;font-variant-numeric:tabular-nums}
+.linkbtn{background:none;border:0;padding:0;color:inherit;text-decoration:underline;font-weight:600;font-size:14px}
+.stamp{align-self:flex-start;border:3px solid currentColor;border-radius:6px;padding:6px 12px;font-family:var(--display);font-weight:900;font-stretch:115%;text-transform:uppercase;letter-spacing:.06em;font-size:20px;transform:rotate(-3deg);background:var(--card)}
+@media (prefers-reduced-motion:no-preference){.stamp{animation:thud .28s ease-out}}
+@keyframes thud{from{transform:rotate(-3deg) scale(1.6);opacity:0}to{transform:rotate(-3deg) scale(1);opacity:1}}
+.reveal{display:flex;flex-direction:column;gap:10px}
+.reveal .pts{font-family:var(--display);font-weight:900;font-size:44px;font-variant-numeric:tabular-nums;line-height:1}
+.reveal .pts span{font-size:16px;font-weight:600;color:var(--muted);font-family:var(--body)}
+.picks{display:flex;flex-wrap:wrap;gap:6px}
+.pick{font-size:13px;padding:3px 8px;border-radius:99px;border:1px solid var(--line);background:var(--paper)}
+.results{display:flex;flex-direction:column}
+.results>div{display:grid;grid-template-columns:22px 1fr auto;gap:10px;align-items:start;padding:10px 0;border-top:1px solid var(--line)}
+.results>div:first-child{border-top:0}
+.results b{display:block;font-weight:600}
+.results .q{font-size:13px;color:var(--muted)}
+.big{font-family:var(--display);font-weight:900;font-stretch:105%;font-size:64px;line-height:.9;font-variant-numeric:tabular-nums}
+.big span{font-size:20px;color:var(--muted);font-weight:700}
+.board{display:flex;flex-direction:column;gap:2px;font-size:15px}
+.board>div{display:grid;grid-template-columns:26px 1fr auto;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
+.board>div.me{font-weight:700}
+.board>div:first-child{border-top:0}
+.sharebox{white-space:pre;font-family:ui-monospace,Menlo,monospace;font-size:14px;background:var(--paper);border:1px dashed var(--line);border-radius:4px;padding:10px;overflow-x:auto}
+.foot{font-size:12px;color:var(--muted);text-align:center}
+ol.how{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px}
+.err{color:var(--alert);font-weight:600}
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+
+<script>
+/* ---------- Data: every principal council in England, 2026 ----------
+   Name | type | area | fame (1 obscure … 5 everyone knows)
+   LB London borough, MB metropolitan borough, CC county council,
+   UA unitary authority, D district council, SG sui generis            */
+const RAW = `Barking and Dagenham|LB||2
+Barnet|LB||3
+Bexley|LB||2
+Brent|LB||3
+Bromley|LB||3
+Camden|LB||5
+Croydon|LB||4
+Ealing|LB||3
+Enfield|LB||3
+Greenwich|LB||4
+Hackney|LB||5
+Hammersmith and Fulham|LB||3
+Haringey|LB||3
+Harrow|LB||3
+Havering|LB||2
+Hillingdon|LB||2
+Hounslow|LB||3
+Islington|LB||5
+Kensington and Chelsea|LB||4
+Kingston upon Thames|LB||3
+Lambeth|LB||4
+Lewisham|LB||4
+Merton|LB||2
+Newham|LB||3
+Redbridge|LB||2
+Richmond upon Thames|LB||3
+Southwark|LB||4
+Sutton|LB||2
+Tower Hamlets|LB||4
+Waltham Forest|LB||2
+Wandsworth|LB||4
+Westminster|LB||5
+City of London|SG|Greater London|4
+Isles of Scilly|SG|Cornwall|2
+Bolton|MB|Greater Manchester|4
+Bury|MB|Greater Manchester|3
+Manchester|MB|Greater Manchester|5
+Oldham|MB|Greater Manchester|3
+Rochdale|MB|Greater Manchester|3
+Salford|MB|Greater Manchester|4
+Stockport|MB|Greater Manchester|3
+Tameside|MB|Greater Manchester|1
+Trafford|MB|Greater Manchester|3
+Wigan|MB|Greater Manchester|3
+Knowsley|MB|Merseyside|1
+Liverpool|MB|Merseyside|5
+St Helens|MB|Merseyside|2
+Sefton|MB|Merseyside|1
+Wirral|MB|Merseyside|3
+Barnsley|MB|South Yorkshire|3
+Doncaster|MB|South Yorkshire|3
+Rotherham|MB|South Yorkshire|3
+Sheffield|MB|South Yorkshire|5
+Gateshead|MB|Tyne and Wear|3
+Newcastle upon Tyne|MB|Tyne and Wear|5
+North Tyneside|MB|Tyne and Wear|1
+South Tyneside|MB|Tyne and Wear|1
+Sunderland|MB|Tyne and Wear|4
+Birmingham|MB|West Midlands|5
+Coventry|MB|West Midlands|4
+Dudley|MB|West Midlands|3
+Sandwell|MB|West Midlands|1
+Solihull|MB|West Midlands|2
+Walsall|MB|West Midlands|2
+Wolverhampton|MB|West Midlands|4
+Bradford|MB|West Yorkshire|4
+Calderdale|MB|West Yorkshire|1
+Kirklees|MB|West Yorkshire|1
+Leeds|MB|West Yorkshire|5
+Wakefield|MB|West Yorkshire|3
+Cambridgeshire|CC||3
+Derbyshire|CC||3
+Devon|CC||4
+East Sussex|CC||3
+Essex|CC||5
+Gloucestershire|CC||2
+Hampshire|CC||4
+Hertfordshire|CC||3
+Kent|CC||5
+Lancashire|CC||4
+Leicestershire|CC||3
+Lincolnshire|CC||3
+Norfolk|CC||4
+Nottinghamshire|CC||3
+Oxfordshire|CC||3
+Staffordshire|CC||3
+Suffolk|CC||3
+Surrey|CC||4
+Warwickshire|CC||2
+West Sussex|CC||3
+Worcestershire|CC||2
+Bath and North East Somerset|UA|Somerset|2
+Bedford|UA|Bedfordshire|2
+Blackburn with Darwen|UA|Lancashire|2
+Blackpool|UA|Lancashire|3
+Bournemouth, Christchurch and Poole|UA|Dorset|2
+Bracknell Forest|UA|Berkshire|1
+Brighton and Hove|UA|East Sussex|4
+Bristol|UA|Bristol|5
+Buckinghamshire|UA|Buckinghamshire|3
+Central Bedfordshire|UA|Bedfordshire|1
+Cheshire East|UA|Cheshire|2
+Cheshire West and Chester|UA|Cheshire|1
+Cornwall|UA|Cornwall|5
+Cumberland|UA|Cumbria|2
+Darlington|UA|County Durham|2
+Derby|UA|Derbyshire|3
+Dorset|UA|Dorset|3
+County Durham|UA|County Durham|3
+East Riding of Yorkshire|UA|East Riding of Yorkshire|2
+Halton|UA|Cheshire|1
+Hartlepool|UA|County Durham|2
+Herefordshire|UA|Herefordshire|2
+Isle of Wight|UA|Isle of Wight|4
+Kingston upon Hull|UA|East Riding of Yorkshire|3
+Leicester|UA|Leicestershire|3
+Luton|UA|Bedfordshire|3
+Medway|UA|Kent|2
+Middlesbrough|UA|North Yorkshire|3
+Milton Keynes|UA|Buckinghamshire|3
+North East Lincolnshire|UA|Lincolnshire|1
+North Lincolnshire|UA|Lincolnshire|1
+North Northamptonshire|UA|Northamptonshire|1
+North Somerset|UA|Somerset|1
+North Yorkshire|UA|North Yorkshire|3
+Northumberland|UA|Northumberland|3
+Nottingham|UA|Nottinghamshire|4
+Peterborough|UA|Cambridgeshire|2
+Plymouth|UA|Devon|3
+Portsmouth|UA|Hampshire|3
+Reading|UA|Berkshire|3
+Redcar and Cleveland|UA|North Yorkshire|1
+Rutland|UA|Rutland|2
+Shropshire|UA|Shropshire|3
+Slough|UA|Berkshire|2
+Somerset|UA|Somerset|3
+South Gloucestershire|UA|Gloucestershire|1
+Southampton|UA|Hampshire|3
+Southend-on-Sea|UA|Essex|2
+Stockton-on-Tees|UA|County Durham|2
+Stoke-on-Trent|UA|Staffordshire|3
+Swindon|UA|Wiltshire|3
+Telford and Wrekin|UA|Shropshire|1
+Thurrock|UA|Essex|2
+Torbay|UA|Devon|1
+Warrington|UA|Cheshire|2
+West Berkshire|UA|Berkshire|1
+West Northamptonshire|UA|Northamptonshire|1
+Westmorland and Furness|UA|Cumbria|1
+Wiltshire|UA|Wiltshire|3
+Windsor and Maidenhead|UA|Berkshire|2
+Wokingham|UA|Berkshire|1
+York|UA|North Yorkshire|4
+Cambridge|D|Cambridgeshire|5
+East Cambridgeshire|D|Cambridgeshire|1
+Fenland|D|Cambridgeshire|1
+Huntingdonshire|D|Cambridgeshire|1
+South Cambridgeshire|D|Cambridgeshire|1
+Amber Valley|D|Derbyshire|1
+Bolsover|D|Derbyshire|1
+Chesterfield|D|Derbyshire|4
+Derbyshire Dales|D|Derbyshire|2
+Erewash|D|Derbyshire|1
+High Peak|D|Derbyshire|2
+North East Derbyshire|D|Derbyshire|1
+South Derbyshire|D|Derbyshire|1
+East Devon|D|Devon|2
+Exeter|D|Devon|5
+Mid Devon|D|Devon|1
+North Devon|D|Devon|2
+South Hams|D|Devon|1
+Teignbridge|D|Devon|1
+Torridge|D|Devon|1
+West Devon|D|Devon|1
+Eastbourne|D|East Sussex|4
+Hastings|D|East Sussex|4
+Lewes|D|East Sussex|3
+Rother|D|East Sussex|1
+Wealden|D|East Sussex|1
+Basildon|D|Essex|3
+Braintree|D|Essex|2
+Brentwood|D|Essex|2
+Castle Point|D|Essex|1
+Chelmsford|D|Essex|4
+Colchester|D|Essex|4
+Epping Forest|D|Essex|2
+Harlow|D|Essex|2
+Maldon|D|Essex|1
+Rochford|D|Essex|1
+Tendring|D|Essex|1
+Uttlesford|D|Essex|1
+Cheltenham|D|Gloucestershire|4
+Cotswold|D|Gloucestershire|3
+Forest of Dean|D|Gloucestershire|2
+Gloucester|D|Gloucestershire|5
+Stroud|D|Gloucestershire|2
+Tewkesbury|D|Gloucestershire|2
+Basingstoke and Deane|D|Hampshire|2
+East Hampshire|D|Hampshire|1
+Eastleigh|D|Hampshire|2
+Fareham|D|Hampshire|2
+Gosport|D|Hampshire|2
+Hart|D|Hampshire|1
+Havant|D|Hampshire|1
+New Forest|D|Hampshire|3
+Rushmoor|D|Hampshire|1
+Test Valley|D|Hampshire|1
+Winchester|D|Hampshire|4
+Broxbourne|D|Hertfordshire|1
+Dacorum|D|Hertfordshire|1
+East Hertfordshire|D|Hertfordshire|1
+Hertsmere|D|Hertfordshire|1
+North Hertfordshire|D|Hertfordshire|1
+St Albans|D|Hertfordshire|4
+Stevenage|D|Hertfordshire|3
+Three Rivers|D|Hertfordshire|1
+Watford|D|Hertfordshire|4
+Welwyn Hatfield|D|Hertfordshire|2
+Ashford|D|Kent|2
+Canterbury|D|Kent|4
+Dartford|D|Kent|2
+Dover|D|Kent|3
+Folkestone and Hythe|D|Kent|1
+Gravesham|D|Kent|1
+Maidstone|D|Kent|3
+Sevenoaks|D|Kent|2
+Swale|D|Kent|1
+Thanet|D|Kent|2
+Tonbridge and Malling|D|Kent|1
+Tunbridge Wells|D|Kent|3
+Burnley|D|Lancashire|3
+Chorley|D|Lancashire|2
+Fylde|D|Lancashire|1
+Hyndburn|D|Lancashire|1
+Lancaster|D|Lancashire|3
+Pendle|D|Lancashire|1
+Preston|D|Lancashire|4
+Ribble Valley|D|Lancashire|1
+Rossendale|D|Lancashire|1
+South Ribble|D|Lancashire|1
+West Lancashire|D|Lancashire|1
+Wyre|D|Lancashire|1
+Blaby|D|Leicestershire|1
+Charnwood|D|Leicestershire|1
+Harborough|D|Leicestershire|2
+Hinckley and Bosworth|D|Leicestershire|2
+Melton|D|Leicestershire|2
+North West Leicestershire|D|Leicestershire|1
+Oadby and Wigston|D|Leicestershire|1
+Boston|D|Lincolnshire|3
+East Lindsey|D|Lincolnshire|1
+Lincoln|D|Lincolnshire|5
+North Kesteven|D|Lincolnshire|1
+South Holland|D|Lincolnshire|1
+South Kesteven|D|Lincolnshire|1
+West Lindsey|D|Lincolnshire|1
+Breckland|D|Norfolk|1
+Broadland|D|Norfolk|1
+Great Yarmouth|D|Norfolk|3
+King's Lynn and West Norfolk|D|Norfolk|2
+North Norfolk|D|Norfolk|2
+Norwich|D|Norfolk|5
+South Norfolk|D|Norfolk|1
+Ashfield|D|Nottinghamshire|1
+Bassetlaw|D|Nottinghamshire|1
+Broxtowe|D|Nottinghamshire|1
+Gedling|D|Nottinghamshire|1
+Mansfield|D|Nottinghamshire|4
+Newark and Sherwood|D|Nottinghamshire|2
+Rushcliffe|D|Nottinghamshire|1
+Cherwell|D|Oxfordshire|1
+Oxford|D|Oxfordshire|5
+South Oxfordshire|D|Oxfordshire|1
+Vale of White Horse|D|Oxfordshire|1
+West Oxfordshire|D|Oxfordshire|1
+Cannock Chase|D|Staffordshire|2
+East Staffordshire|D|Staffordshire|1
+Lichfield|D|Staffordshire|3
+Newcastle-under-Lyme|D|Staffordshire|3
+South Staffordshire|D|Staffordshire|1
+Stafford|D|Staffordshire|4
+Staffordshire Moorlands|D|Staffordshire|1
+Tamworth|D|Staffordshire|3
+Babergh|D|Suffolk|1
+East Suffolk|D|Suffolk|2
+Ipswich|D|Suffolk|5
+Mid Suffolk|D|Suffolk|1
+West Suffolk|D|Suffolk|2
+Elmbridge|D|Surrey|1
+Epsom and Ewell|D|Surrey|2
+Guildford|D|Surrey|4
+Mole Valley|D|Surrey|1
+Reigate and Banstead|D|Surrey|1
+Runnymede|D|Surrey|1
+Spelthorne|D|Surrey|1
+Surrey Heath|D|Surrey|1
+Tandridge|D|Surrey|1
+Waverley|D|Surrey|1
+Woking|D|Surrey|3
+North Warwickshire|D|Warwickshire|1
+Nuneaton and Bedworth|D|Warwickshire|2
+Rugby|D|Warwickshire|3
+Stratford-on-Avon|D|Warwickshire|4
+Warwick|D|Warwickshire|4
+Adur|D|West Sussex|1
+Arun|D|West Sussex|1
+Chichester|D|West Sussex|4
+Crawley|D|West Sussex|3
+Horsham|D|West Sussex|3
+Mid Sussex|D|West Sussex|1
+Worthing|D|West Sussex|3
+Bromsgrove|D|Worcestershire|2
+Malvern Hills|D|Worcestershire|2
+Redditch|D|Worcestershire|2
+Worcester|D|Worcestershire|5
+Wychavon|D|Worcestershire|1
+Wyre Forest|D|Worcestershire|1`;
+
+const COUNCILS = RAW.trim().split('\n').map(l => { const [name,t,area,f] = l.split('|'); return {name, t, area, f:+f}; });
+const TYPE_LABEL = {LB:'London borough', MB:'metropolitan borough', CC:'county council', UA:'unitary authority', D:'district council', SG:'one-off authority'};
+
+const ALIASES = {
+  'Kingston upon Hull':['hull','hull city','kingston'], 'Kingston upon Thames':['kingston'], 'Newcastle upon Tyne':['newcastle'],
+  'Newcastle-under-Lyme':['newcastle','newcastle under lyme'], 'Richmond upon Thames':['richmond'],
+  'Bournemouth, Christchurch and Poole':['bcp','bournemouth','poole','christchurch','bournemouth christchurch poole'],
+  'Bath and North East Somerset':['banes','bathnes','bath','bath and ne somerset','bath ne somerset'],
+  'Brighton and Hove':['brighton','hove'], 'Windsor and Maidenhead':['windsor','maidenhead','rbwm'],
+  'Telford and Wrekin':['telford'], 'Redcar and Cleveland':['redcar'], 'Blackburn with Darwen':['blackburn','blackburn and darwen'],
+  'Stockton-on-Tees':['stockton'], 'Southend-on-Sea':['southend'], 'Stoke-on-Trent':['stoke'],
+  'Stratford-on-Avon':['stratford','stratford upon avon'], 'County Durham':['durham','durham county'],
+  'Cheshire West and Chester':['cwac','chester','cheshire west'], 'Hammersmith and Fulham':['hammersmith','fulham'],
+  'Kensington and Chelsea':['kensington','chelsea','rbkc'], 'Barking and Dagenham':['barking','dagenham'],
+  "King's Lynn and West Norfolk":['kings lynn','king s lynn','west norfolk'], 'Basingstoke and Deane':['basingstoke'],
+  'Folkestone and Hythe':['folkestone','shepway'], 'Epsom and Ewell':['epsom'], 'Reigate and Banstead':['reigate'],
+  'Newark and Sherwood':['newark'], 'Hinckley and Bosworth':['hinckley'], 'Nuneaton and Bedworth':['nuneaton'],
+  'Oadby and Wigston':['oadby'], 'Welwyn Hatfield':['welwyn','hatfield'], 'Westmorland and Furness':['westmorland'],
+  'Tonbridge and Malling':['tonbridge'], 'City of London':['city','the city','corporation of london','city of london corporation','square mile'],
+  'Isles of Scilly':['scilly','scilly isles','isles of scilly council'], 'East Riding of Yorkshire':['east riding','east yorkshire'],
+  'Isle of Wight':['iow','wight'], 'Milton Keynes':['mk'], 'Herefordshire':['hereford'], 'Vale of White Horse':['vale of the white horse'],
+  'Forest of Dean':['the forest of dean'], 'Tower Hamlets':['tower hamlet'], 'Great Yarmouth':['yarmouth']
+};
+
+function norm(s){
+  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'')
+    .replace(/&/g,' and ').replace(/['’.,]/g,'').replace(/[^a-z0-9]+/g,' ').trim()
+    .replace(/\bsaint\b/g,'st').replace(/\s+/g,' ');
+}
+function strip(s){
+  let prev;
+  do {
+    prev = s;
+    s = s.replace(/^(the|london borough of|royal borough of|metropolitan borough of|borough of|city and county of|city of|county of|district of)\s+/,'')
+         .replace(/\s+(metropolitan borough council|metropolitan district council|county council|borough council|district council|city council|council|metropolitan borough|borough|district|unitary authority|unitary|county)$/,'');
+  } while (s !== prev && s.length);
+  return s;
+}
+const INDEX = new Map();
+function addKey(k, c){ if(!k) return; if(!INDEX.has(k)) INDEX.set(k, []); const a = INDEX.get(k); if(!a.includes(c)) a.push(c); }
+COUNCILS.forEach(c => {
+  const n = norm(c.name); addKey(n, c);
+  if (c.name !== 'City of London') addKey(strip(n), c);
+  (ALIASES[c.name] || []).forEach(a => addKey(norm(a), c));
+});
+const KEYS = [...INDEX.keys()];
+function lev(a, b){
+  const m = a.length, n = b.length; if (Math.abs(m-n) > 2) return 9;
+  let prev = Array.from({length:n+1}, (_, j) => j);
+  for (let i = 1; i <= m; i++){
+    const cur = [i];
+    for (let j = 1; j <= n; j++) cur[j] = Math.min(prev[j]+1, cur[j-1]+1, prev[j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[n];
+}
+function lookup(text){
+  const n = norm(text); if (!n) return [];
+  if (INDEX.has(n)) return INDEX.get(n);
+  const s = strip(n); if (INDEX.has(s)) return INDEX.get(s);
+  const tol = s.length <= 4 ? 0 : s.length <= 7 ? 1 : 2;
+  if (!tol) return [];
+  let best = [], bd = 99;
+  for (const k of KEYS){
+    if (k.length < 4) continue;
+    const d = lev(s, k);
+    if (d < bd){ bd = d; best = [...INDEX.get(k)]; }
+    else if (d === bd) INDEX.get(k).forEach(c => { if(!best.includes(c)) best.push(c); });
+  }
+  return bd <= tol ? best : [];
+}
+
+/* ---------- Prompts ---------- */
+const MET = ['Greater Manchester','Merseyside','South Yorkshire','Tyne and Wear','West Midlands','West Yorkshire'];
+const SHIRES = [...new Set(COUNCILS.filter(c => c.t === 'D').map(c => c.area))].sort();
+const has = re => c => re.test(c.name);
+const P = (text, test, note) => ({text, test, note});
+const letterCounts = {}; COUNCILS.forEach(c => letterCounts[c.name[0]] = (letterCounts[c.name[0]]||0) + 1);
+const LETTERS = Object.keys(letterCounts).filter(L => letterCounts[L] >= 12).sort();
+const GROUPS = {
+  lb:[P('Name a London borough', c => c.t === 'LB', 'The City of London is not a borough.')],
+  mb:[P('Name a metropolitan borough', c => c.t === 'MB', 'The 36 councils of the six former metropolitan counties.')],
+  metro: MET.map(a => P(`Name a council in ${a}`, c => c.t === 'MB' && c.area === a)),
+  cc:[P('Name a county council', c => c.t === 'CC', 'The upper tier, with district councils beneath it.')],
+  ua:[P('Name a unitary authority', c => c.t === 'UA', 'One council doing every job, with no districts below it.')],
+  district: SHIRES.map(a => P(`Name a district council in ${a}`, c => c.t === 'D' && c.area === a)),
+  compass:[P('Name a council with North, South, East or West in its name', has(/\b(North|South|East|West)\b/))],
+  and:[P('Name a council with “and” in its name', has(/\band\b/))],
+  nature:[P('Name a council with a forest, valley, hill, vale, chase, peak, dale, heath or moor in its name', has(/\b(Forest|Valley|Hills|Moorlands|Vale|Chase|Peak|Dales|Heath)\b/))],
+  river:[P('Name a council with “on”, “upon” or “under” in its name', has(/(\supon\s|-on-|-under-)/))],
+  shire:[P('Name a council with “shire” in its name', has(/shire/))],
+  short:[P('Name a council whose name has five letters or fewer', c => c.name.replace(/[^A-Za-z]/g,'').length <= 5)],
+  letter: LETTERS.map(L => P(`Name a council beginning with ${L}`, c => c.name[0] === L))
+};
+const WEIGHT = [1, 3, 9, 27, 81];
+function prepare(p){
+  const valid = COUNCILS.filter(p.test);
+  const total = valid.reduce((s, c) => s + WEIGHT[c.f-1], 0);
+  return {...p, valid, total};
+}
+function hashStr(s){ let h = 2166136261; for (const ch of s){ h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+function rng(seed){ let a = seed >>> 0; return () => { a += 0x6D2B79F5; let t = a; t = Math.imul(t ^ t >>> 15, t | 1); t ^= t + Math.imul(t ^ t >>> 7, t | 61); return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+function shuffle(arr, r){ const a = [...arr]; for (let i = a.length-1; i > 0; i--){ const j = Math.floor(r()*(i+1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function makeRound(r){
+  return shuffle(Object.keys(GROUPS), r).slice(0, 7).map(g => { const list = GROUPS[g]; return prepare(list[Math.floor(r()*list.length)]); });
+}
+
+/* ---------- Extra question families (used from 24 Nov 2026) ---------- */
+const AREA_REGION = {
+  'Greater London':'London','Cornwall':'South West','Greater Manchester':'North West','Merseyside':'North West',
+  'South Yorkshire':'Yorkshire and the Humber','West Yorkshire':'Yorkshire and the Humber','Tyne and Wear':'North East',
+  'West Midlands':'West Midlands','Somerset':'South West','Bedfordshire':'East of England','Lancashire':'North West',
+  'Dorset':'South West','Berkshire':'South East','East Sussex':'South East','Bristol':'South West','Buckinghamshire':'South East',
+  'Cheshire':'North West','Cumbria':'North West','County Durham':'North East','Derbyshire':'East Midlands',
+  'East Riding of Yorkshire':'Yorkshire and the Humber','Herefordshire':'West Midlands','Isle of Wight':'South East',
+  'Leicestershire':'East Midlands','Kent':'South East','North Yorkshire':'Yorkshire and the Humber','Lincolnshire':'East Midlands',
+  'Northamptonshire':'East Midlands','Northumberland':'North East','Nottinghamshire':'East Midlands','Cambridgeshire':'East of England',
+  'Devon':'South West','Hampshire':'South East','Rutland':'East Midlands','Shropshire':'West Midlands','Gloucestershire':'South West',
+  'Essex':'East of England','Staffordshire':'West Midlands','Wiltshire':'South West','Hertfordshire':'East of England',
+  'Norfolk':'East of England','Suffolk':'East of England','Oxfordshire':'South East','Surrey':'South East','West Sussex':'South East',
+  'Warwickshire':'West Midlands','Worcestershire':'West Midlands'
+};
+const REGION_OVERRIDE = {'Middlesbrough':'North East','Redcar and Cleveland':'North East',
+  'North East Lincolnshire':'Yorkshire and the Humber','North Lincolnshire':'Yorkshire and the Humber'};
+COUNCILS.forEach(c => { c.region = REGION_OVERRIDE[c.name] || (c.t === 'LB' ? 'London' : c.t === 'CC' ? AREA_REGION[c.name] : AREA_REGION[c.area]); });
+const REGIONS = ['North East','North West','Yorkshire and the Humber','East Midlands','West Midlands','East of England','London','South East','South West'];
+const lastWord = c => c.name.split(/[\s-]/).pop();
+const letters = c => c.name.replace(/[^A-Za-z]/g,'');
+const words = c => c.name.replace(/,/g,'').split(/[\s-]+/).length;
+const count = f => COUNCILS.filter(f).length;
+const UA_AREAS = [...new Set(COUNCILS.filter(c => c.t === 'UA').map(c => c.area))].filter(a => count(c => c.t === 'UA' && c.area === a) >= 3).sort();
+const ENDINGS = ['ham','ford','ton','field','ley','ing','wich','shire','don','ster','by','wood','well','worth'].filter(e => count(c => lastWord(c).toLowerCase().endsWith(e)) >= 6);
+const RARE_LETTERS = ['K','V','W','Y','P','F','G'].filter(L => { const n = count(c => c.name.toUpperCase().includes(L)); return n >= 8 && n <= 120; });
+const LETTERS2 = Object.keys(letterCounts).filter(L => letterCounts[L] >= 8).sort();
+const GROUPS2 = {
+  ...GROUPS,
+  letter: LETTERS2.map(L => P(`Name a council beginning with ${L}`, c => c.name[0] === L)),
+  region: REGIONS.map(R => P(`Name a council in the ${R} region`, c => c.region === R, 'Any type of council counts.')),
+  uaarea: UA_AREAS.map(a => P(`Name a unitary authority in ${a}`, c => c.t === 'UA' && c.area === a, 'Using the ceremonial county.')),
+  ending: ENDINGS.map(e => P(`Name a council whose name ends in “-${e}”`, c => lastWord(c).toLowerCase().endsWith(e))),
+  contains: RARE_LETTERS.map(L => P(`Name a council with the letter ${L} anywhere in its name`, c => c.name.toUpperCase().includes(L))),
+  length: [
+    P('Name a council with a one-word name of 10 letters or more', c => words(c) === 1 && letters(c).length >= 10),
+    P('Name a council whose name is three or more words', c => words(c) >= 3),
+    P('Name a council with a double letter in its name, like the “rr” in Harrow', c => /(\w)\1/i.test(c.name))
+  ],
+  anydistrict: [
+    P('Name any district council', c => c.t === 'D', 'There are 164 to choose from.'),
+    P('Name a district council that shares its name with a city', c => c.t === 'D' && ['Cambridge','Canterbury','Chelmsford','Chichester','Colchester','Exeter','Gloucester','Lancaster','Lichfield','Lincoln','Norwich','Oxford','Preston','St Albans','Winchester','Worcester','Wakefield'].includes(c.name), 'Cities with their own district council.')
+  ],
+  mbnorth: [P('Name a metropolitan borough outside Greater Manchester', c => c.t === 'MB' && c.area !== 'Greater Manchester')]
+};
+const NEW_FROM = '2026-11-24';
+const ROUND_CACHE = {};
+function dayStr(ms){ return new Date(ms).toISOString().slice(0, 10); }
+function roundTexts(date){
+  if (ROUND_CACHE[date]) return ROUND_CACHE[date];
+  if (date < NEW_FROM) return (ROUND_CACHE[date] = makeRound(rng(hashStr('councillion-' + date))));
+  const recent = new Set();
+  for (let k = 1; k <= 4; k++){ const d = dayStr(Date.parse(date) - k*864e5); if (d >= LAUNCH) roundTexts(d).forEach(p => recent.add(p.text)); }
+  const r = rng(hashStr('councillion2-' + date));
+  const out = [];
+  for (const g of shuffle(Object.keys(GROUPS2), r)){
+    if (out.length === 7) break;
+    const fresh = GROUPS2[g].filter(p => !recent.has(p.text));
+    if (fresh.length) out.push(prepare(fresh[Math.floor(r()*fresh.length)]));
+  }
+  for (const g of shuffle(Object.keys(GROUPS2), r)){ if (out.length === 7) break; const p = prepare(GROUPS2[g][0]); if (!out.some(q => q.text === p.text)) out.push(p); }
+  return (ROUND_CACHE[date] = out);
+}
+function practiceRound(){
+  return shuffle(Object.keys(GROUPS2), Math.random).slice(0, 7).map(g => { const l = GROUPS2[g]; return prepare(l[Math.floor(Math.random()*l.length)]); });
+}
+
+/* ---------- Rarity ---------- */
+const TIERS = [
+  {name:'Household Name',      pts:10,  min:0.25,  sq:'⬜', col:'var(--t1)'},
+  {name:'Local Favourite',     pts:25,  min:0.12,  sq:'🟦', col:'var(--t2)'},
+  {name:'Backbencher',         pts:45,  min:0.06,  sq:'🟩', col:'var(--t3)'},
+  {name:'Committee Pick',      pts:65,  min:0.03,  sq:'🟨', col:'var(--t4)'},
+  {name:'Hidden Ward',         pts:85,  min:0.012, sq:'🟧', col:'var(--t5)'},
+  {name:'One in a Councillion',pts:100, min:0,     sq:'🟪', col:'var(--t6)'}
+];
+const tierFor = share => TIERS.findIndex(t => share >= t.min);
+const TITLES = [[560,'Leader of the Council'],[440,'Cabinet Member'],[320,'Ward Councillor'],[200,'Parish Clerk'],[0,'Member of the Public']];
+const K = 8; // how many "virtual players" the estimate counts as
+
+/* ---------- State ---------- */
+const TZ_TODAY = new Date().toLocaleDateString('en-CA', {timeZone:'Europe/London'});
+const LAUNCH = '2026-11-22';
+const DAY_NO = Math.round((Date.parse(TZ_TODAY) - Date.parse(LAUNCH)) / 864e5) + 1;
+const TIME_LIMIT = 25;
+const store = {
+  get(k, d){ try { const v = localStorage.getItem('councillion:' + k); return v ? JSON.parse(v) : d; } catch(e){ return d; } },
+  set(k, v){ try { localStorage.setItem('councillion:' + k, JSON.stringify(v)); } catch(e){} }
+};
+let S = { mode:'daily', prompts:[], results:[], idx:0 };
+let crowd = { db:null, user:null, uid:null, plays:[], canWrite:true, ready:false };
+let tick = null, deadline = 0, writeChain = Promise.resolve();
+const app = document.getElementById('app');
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+
+function dailyPrompts(){ return roundTexts(TZ_TODAY); }
+function dailySaved(){ return store.get('day-' + TZ_TODAY, null); }
+
+function crowdShare(i, name){
+  if (S.mode !== 'daily') return null;
+  const others = crowd.plays.filter(p => p.id !== crowd.uid && Array.isArray(p.answers) && p.answers[i]);
+  if (!others.length) return null;
+  return { n: others.length, count: others.filter(p => p.answers[i] === name).length };
+}
+
+function evaluate(i, text){
+  const p = S.prompts[i];
+  const res = { input: text || '', name:'', tier:-1, pts:0, share:null, reason:'' };
+  if (!text){ res.reason = 'Time ran out.'; return res; }
+  const hits = lookup(text);
+  const ok = hits.find(c => p.valid.includes(c));
+  if (!ok){
+    if (hits.length){
+      const c = hits[0];
+      res.reason = `${c.name} is a ${TYPE_LABEL[c.t]}${c.area && c.t !== 'UA' ? ' in ' + c.area : ''}, so it doesn’t count here.`;
+      if (c.t === 'SG' && p.text.includes('London borough')) res.reason = 'The City of London is a one-off authority, not a London borough.';
+    } else res.reason = 'That isn’t a council name I recognise.';
+    return res;
+  }
+  res.name = ok.name;
+  const base = WEIGHT[ok.f-1] / p.total;
+  const cs = crowdShare(i, ok.name);
+  res.share = cs ? (cs.count + K*base) / (cs.n + K) : base;
+  res.crowdN = cs ? cs.n : 0;
+  res.tier = tierFor(res.share);
+  res.pts = TIERS[res.tier].pts;
+  return res;
+}
+
+/* ---------- Crowd (shared scores between people this page is shared with) ---------- */
+async function initCrowd(){
+  try {
+    const [db, user] = await Promise.all([window.claude?.use?.('db'), window.claude?.use?.('user')]);
+    if (!db || !user) return;
+    const uid = await user.id();
+    if (!uid) return;
+    crowd.db = db; crowd.user = user; crowd.uid = uid;
+    const w = await user.can?.('data.write'); if (w === false) crowd.canWrite = false;
+    const timer = setTimeout(() => { if (!crowd.ready){ crowd.ready = 'slow'; refreshBoard(); } }, 10000);
+    db.collection('plays').where('date', '==', TZ_TODAY).onSnapshot(snap => {
+      clearTimeout(timer);
+      crowd.plays = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      crowd.ready = true; refreshBoard();
+    }, () => { clearTimeout(timer); crowd.ready = 'error'; refreshBoard(); });
+  } catch(e){}
+}
+function pushPlay(){
+  if (!crowd.db || !crowd.canWrite || S.mode !== 'daily') return;
+  const body = { date: TZ_TODAY, answers: S.results.map(r => r.name || ''), points: S.results.map(r => r.pts),
+                 score: S.results.reduce((s, r) => s + r.pts, 0), done: S.results.length === 7, at: Date.now() };
+  writeChain = writeChain.then(() => crowd.db.doc('plays/' + crowd.uid).set(body)).catch(e => { if (e && e.code === 'invalid_argument') crowd.canWrite = false; });
+}
+async function boardHTML(){
+  if (!crowd.db) return '';
+  if (crowd.ready === 'error') return '';
+  if (!crowd.ready) return `<section class="panel"><h3>Today’s chamber</h3><p class="muted small">Loading today’s scores…</p></section>`;
+  if (crowd.ready === 'slow' && !crowd.plays.length) return `<section class="panel"><h3>Today’s chamber</h3><p class="muted small">Today’s scores can’t be reached yet.</p></section>`;
+  const done = crowd.plays.filter(p => p.done).sort((a, b) => b.score - a.score);
+  if (!done.length) return `<section class="panel"><h3>Today’s chamber</h3><p class="muted small">Nobody has finished today’s agenda yet. Finish first and you top the table.</p></section>`;
+  let names = {};
+  try { names = await crowd.user.profiles(done.slice(0, 12).map(p => p.id)) || {}; } catch(e){}
+  const rows = done.slice(0, 12).map((p, i) => `<div class="${p.id === crowd.uid ? 'me' : ''}"><span class="num" style="text-align:left">${i+1}</span><span class="who" data-i="${i}"></span><span class="num">${p.score}</span></div>`).join('');
+  setTimeout(() => document.querySelectorAll('.board .who').forEach(el => { const p = done[+el.dataset.i]; el.textContent = p.id === crowd.uid ? 'You' : ((names[p.id] && names[p.id].name) || 'Someone'); }), 0);
+  return `<section class="panel"><h3>Today’s chamber · ${done.length} played</h3><div class="board">${rows}</div></section>`;
+}
+async function refreshBoard(){
+  const slot = document.getElementById('board'); if (!slot) return;
+  slot.innerHTML = await boardHTML();
+}
+
+/* ---------- Screens ---------- */
+const crest = `<svg class="crest" viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 4 7v8c0 7.5 5.1 13.2 12 15 6.9-1.8 12-7.5 12-15V7z" fill="var(--civic)"/><path d="M10 12h12M10 16h12M10 20h8" stroke="var(--civic-ink)" stroke-width="2.4" stroke-linecap="round"/></svg>`;
+function mast(){
+  const streak = store.get('streak', {n:0, last:''});
+  return `<header class="mast"><div class="logo">${crest}Councillion</div><small>Agenda #${DAY_NO}<br>${streak.n ? `${streak.n}-day streak` : new Date(TZ_TODAY).toLocaleDateString('en-GB', {day:'numeric', month:'short', year:'numeric'})}</small></header>`;
+}
+function tierTable(){
+  return `<div class="tiers">${TIERS.slice().reverse().map(t => `<span class="chip" style="background:${t.col}"></span><span>${t.name}</span><span class="num">${t.pts}</span>`).join('')}</div>`;
+}
+
+function home(){
+  stopTimer();
+  const saved = dailySaved();
+  const done = saved && saved.results.length === 7;
+  const started = saved && saved.results.length && !done;
+  app.innerHTML = `${mast()}
+  <section class="notice">
+    <div class="notice-head"><span>Public notice</span><span>Daily agenda #${DAY_NO}</span></div>
+    <div class="notice-body">
+      <h2>Name the council nobody else will.</h2>
+      <p>Seven prompts about England’s 317 councils. Any correct answer scores, but the rarer your answer, the more it’s worth. You get ${TIME_LIMIT} seconds per prompt.</p>
+      <div class="row">
+        ${done ? `<button class="btn dark" id="see">See today’s result</button>` : `<button class="btn dark" id="go">${started ? `Resume at item ${saved.results.length + 1}` : 'Open today’s agenda'}</button>`}
+      </div>
+    </div>
+  </section>
+  <div id="board"></div>
+  <section class="panel">
+    <h3>How it scores</h3>
+    <p class="small" style="margin:0">Each answer is stamped by how many players would think of it. “Manchester” is a household name. “Tameside” is far rarer.</p>
+    ${tierTable()}
+    <p class="small muted" style="margin:0">Max 700 a day. Typos are forgiven, and you can type short names like “Hull” or “BCP”.</p>
+  </section>
+  <section class="panel">
+    <h3>Practice</h3>
+    <p class="small" style="margin:0">Seven random prompts, as often as you like. Practice scores aren’t saved.</p>
+    <div class="row"><button class="btn ghost" id="practice">Play a practice round</button></div>
+  </section>
+  <p class="foot">Based on England’s principal councils as they stand in 2026: 21 county, 164 district, 62 unitary, 36 metropolitan, 32 London boroughs, plus the City of London and the Isles of Scilly. Councils due to merge from 2027 still count until they’re abolished.</p>`;
+  const go = document.getElementById('go'); if (go) go.onclick = () => startDaily();
+  const see = document.getElementById('see'); if (see) see.onclick = () => { S = {mode:'daily', prompts:dailyPrompts(), results:saved.results, idx:7}; finish(); };
+  document.getElementById('practice').onclick = () => { S = {mode:'practice', prompts:practiceRound(), results:[], idx:0}; showPrompt(); };
+  refreshBoard();
+}
+
+function startDaily(){
+  const saved = dailySaved();
+  S = { mode:'daily', prompts:dailyPrompts(), results: saved ? saved.results : [], idx: saved ? saved.results.length : 0 };
+  if (S.idx >= 7) return finish();
+  showPrompt();
+}
+
+function stopTimer(){ if (tick){ cancelAnimationFrame(tick); tick = null; } }
+function showPrompt(){
+  const p = S.prompts[S.idx];
+  const score = S.results.reduce((s, r) => s + r.pts, 0);
+  app.innerHTML = `${mast()}
+  <section class="notice">
+    <div class="notice-head"><span>${S.mode === 'daily' ? 'Agenda item' : 'Practice item'} ${S.idx + 1} of 7</span><span>${score} pts</span></div>
+    <div class="notice-body">
+      <h2 id="ptext">${esc(p.text)}</h2>
+      <div class="meta"><span>${p.valid.length} councils count${p.note ? ' · ' + esc(p.note) : ''}</span></div>
+      <div class="timer" id="timer"><i id="bar"></i></div>
+      <form class="answer" id="form" autocomplete="off">
+        <label for="ans" class="sr" style="position:absolute;left:-9999px">Your answer</label>
+        <input id="ans" type="text" inputmode="text" autocapitalize="words" spellcheck="false" placeholder="Type a council…">
+        <button class="btn dark" type="submit">Submit</button>
+      </form>
+      <div class="meta"><span id="secs">${TIME_LIMIT}s left</span><button class="linkbtn" id="pass" type="button">Pass</button></div>
+    </div>
+  </section>
+  <p class="foot"><button class="linkbtn" id="quit" type="button">Back to the noticeboard</button></p>`;
+  const input = document.getElementById('ans');
+  setTimeout(() => input.focus(), 30);
+  document.getElementById('form').onsubmit = e => { e.preventDefault(); if (input.value.trim()) submit(input.value.trim()); };
+  document.getElementById('pass').onclick = () => submit('');
+  document.getElementById('quit').onclick = () => home();
+  deadline = performance.now() + TIME_LIMIT * 1000;
+  const bar = document.getElementById('bar'), secs = document.getElementById('secs'), tw = document.getElementById('timer');
+  const loop = now => {
+    const left = Math.max(0, deadline - now);
+    bar.style.transform = `scaleX(${left / (TIME_LIMIT * 1000)})`;
+    secs.textContent = Math.ceil(left / 1000) + 's left';
+    tw.classList.toggle('low', left < 6000);
+    if (left <= 0){ tick = null; submit(input.value.trim() && lookup(input.value.trim()).length ? input.value.trim() : ''); return; }
+    tick = requestAnimationFrame(loop);
+  };
+  tick = requestAnimationFrame(loop);
+}
+
+function examples(p, chosen){
+  const pool = p.valid.filter(c => c.name !== chosen);
+  const minF = Math.min(...pool.map(c => c.f));
+  const rare = shuffle(pool.filter(c => c.f <= minF + 0), Math.random).slice(0, 4);
+  const common = p.valid.slice().sort((a, b) => b.f - a.f)[0];
+  return { rare, common };
+}
+
+function submit(text){
+  stopTimer();
+  const i = S.idx;
+  const r = evaluate(i, text);
+  S.results.push(r);
+  if (S.mode === 'daily'){ store.set('day-' + TZ_TODAY, {results:S.results}); pushPlay(); }
+  const p = S.prompts[i];
+  const ex = examples(p, r.name);
+  const t = r.tier >= 0 ? TIERS[r.tier] : null;
+  const pct = r.share != null ? (r.share < 0.01 ? 'under 1%' : '~' + Math.round(r.share * 100) + '%') : '';
+  app.innerHTML = `${mast()}
+  <section class="notice">
+    <div class="notice-head"><span>${S.mode === 'daily' ? 'Agenda item' : 'Practice item'} ${i + 1} of 7</span><span>${S.results.reduce((s, x) => s + x.pts, 0)} pts</span></div>
+    <div class="notice-body"><h2>${esc(p.text)}</h2></div>
+  </section>
+  <section class="panel reveal">
+    ${t ? `<div class="stamp" style="color:${t.col}">${t.name}</div>
+           <div class="pts">+${r.pts} <span>for ${esc(r.name)}</span></div>
+           <p class="small" style="margin:0">About ${pct} of players would say ${esc(r.name)}.${r.crowdN ? ` Based on ${r.crowdN} other player${r.crowdN === 1 ? '' : 's'} today plus an estimate.` : ''}</p>`
+        : `<div class="stamp" style="color:var(--alert)">${text ? 'Rejected' : 'No answer'}</div>
+           <div class="pts">+0 <span>${text ? 'for “' + esc(text) + '”' : ''}</span></div>
+           <p class="small" style="margin:0">${esc(r.reason)}</p>`}
+    <div>
+      <p class="small muted" style="margin:0 0 6px">Rarer answers you could have given</p>
+      <div class="picks">${ex.rare.map(c => `<span class="pick">${esc(c.name)}</span>`).join('')}</div>
+      <p class="small muted" style="margin:8px 0 0">Most common answer: <b>${esc(ex.common.name)}</b></p>
+    </div>
+    <button class="btn" id="next">${i === 6 ? 'See the minutes' : 'Next item'}</button>
+  </section>`;
+  const nb = document.getElementById('next'); nb.focus();
+  nb.onclick = () => { S.idx++; if (S.idx < 7) showPrompt(); else finish(); };
+}
+
+function finish(){
+  stopTimer();
+  const total = S.results.reduce((s, r) => s + r.pts, 0);
+  const title = TITLES.find(t => total >= t[0])[1];
+  if (S.mode === 'daily'){
+    const st = store.get('streak', {n:0, last:''});
+    if (st.last !== TZ_TODAY){
+      const y = new Date(Date.parse(TZ_TODAY) - 864e5).toISOString().slice(0, 10);
+      store.set('streak', {n: st.last === y ? st.n + 1 : 1, last: TZ_TODAY});
+    }
+  }
+  const grid = S.results.map(r => r.tier >= 0 ? TIERS[r.tier].sq : '⬛').join('');
+  const share = `Councillion #${DAY_NO}\n${grid}\n${total}/700 · ${title}`;
+  app.innerHTML = `${mast()}
+  <section class="notice">
+    <div class="notice-head"><span>${S.mode === 'daily' ? 'Minutes of agenda #' + DAY_NO : 'Practice minutes'}</span><span>${new Date(TZ_TODAY).toLocaleDateString('en-GB', {day:'numeric', month:'short'})}</span></div>
+    <div class="notice-body">
+      <div class="big">${total}<span> / 700</span></div>
+      <h2 style="font-size:24px">${title}</h2>
+    </div>
+  </section>
+  <section class="panel">
+    <h3>Your answers</h3>
+    <div class="results">${S.results.map((r, i) => `<div><span class="chip" style="margin-top:4px;background:${r.tier >= 0 ? TIERS[r.tier].col : 'var(--alert)'}"></span><span><span class="q">${esc(S.prompts[i].text)}</span><b>${r.name ? esc(r.name) + ' · ' + TIERS[r.tier].name : (r.input ? '“' + esc(r.input) + '” · rejected' : 'No answer')}</b></span><span class="num">${r.pts}</span></div>`).join('')}</div>
+  </section>
+  ${S.mode === 'daily' ? `<section class="panel"><h3>Share</h3><div class="sharebox" id="sharetext">${esc(share)}</div><div class="row"><button class="btn" id="copy">Copy result</button></div><p class="small muted" id="copied" style="margin:0"></p></section><div id="board"></div>` : ''}
+  <div class="row">
+    <button class="btn ghost" id="again">Play a practice round</button>
+    <button class="btn ghost" id="homeb">Noticeboard</button>
+  </div>
+  <p class="foot">${S.mode === 'daily' ? 'A new agenda is posted at midnight, UK time.' : ''}</p>`;
+  const cp = document.getElementById('copy');
+  if (cp) cp.onclick = async () => {
+    const msg = document.getElementById('copied');
+    try { await navigator.clipboard.writeText(share); msg.textContent = 'Copied. Paste it anywhere.'; }
+    catch(e){ msg.textContent = 'Copying isn’t allowed here. Select the text above and copy it.'; }
+  };
+  document.getElementById('again').onclick = () => { S = {mode:'practice', prompts:practiceRound(), results:[], idx:0}; showPrompt(); };
+  document.getElementById('homeb').onclick = () => home();
+  refreshBoard();
+}
+
+home();
+initCrowd();
+// A new agenda goes up at midnight UK time: if the page was left open overnight, load it when the player comes back.
+function checkNewDay(){
+  const now = new Date().toLocaleDateString('en-CA', {timeZone:'Europe/London'});
+  if (now !== TZ_TODAY && !tick) location.reload();
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) checkNewDay(); });
+setInterval(checkNewDay, 60000);
+</script>
+</body>
+</html>
