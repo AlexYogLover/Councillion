@@ -525,7 +525,7 @@ const GROUPS = {
 };
 const WEIGHT = [1, 3, 9, 27, 81];
 function prepare(p){
-  const valid = COUNCILS.filter(p.test);
+  const valid = p.answers ? p.answers : COUNCILS.filter(p.test);
   const total = valid.reduce((s, c) => s + WEIGHT[c.f-1], 0);
   return {...p, valid, total};
 }
@@ -961,6 +961,171 @@ const GROUPS3_FACT = {
   ],
   mayor: [F('Name a council led by a directly elected mayor', c => c.mayor, c => c.mayor ? `${c.name} has a directly elected mayor.` : `${c.name} is led by a council leader, not an elected mayor.`, 'Council mayors only. Combined authority and London mayors don’t count.')]
 };
+
+/* ---------- Rankings, inspections, mayors, companies and roles (from 26 Nov 2026) ---------- */
+const TYPE_PLURAL = {UA:'unitary authorities', MB:'metropolitan boroughs', LB:'London boroughs', D:'district councils', CC:'county councils'};
+function topSet(filter, key, n, dir){
+  const list = COUNCILS.filter(filter).slice().sort((a, b) => dir === 'desc' ? b[key] - a[key] : a[key] - b[key]);
+  const cut = list[n-1][key];
+  return new Set(list.filter(c => dir === 'desc' ? c[key] >= cut : c[key] <= cut));
+}
+function rankPrompt(text, filter, key, n, dir, fact, note){
+  const set = topSet(filter, key, n, dir);
+  const ranked = COUNCILS.filter(filter).slice().sort((a, b) => dir === 'desc' ? b[key] - a[key] : a[key] - b[key]);
+  const rankFact = c => { const r = ranked.indexOf(c) + 1; return r ? `${fact(c)} That’s number ${r} on this list.` : fact(c); };
+  return F(text, c => set.has(c), rankFact, [note, set.size > n ? `Ties included, so ${set.size} count.` : ''].filter(Boolean).join(' '));
+}
+const ALL = () => true, isT = t => c => c.t === t;
+GROUPS3_FACT.ranking = [
+  rankPrompt('Name one of the 15 most populous councils in England', ALL, 'pop', 15, 'desc', popFact, 'ONS mid-2023 estimates. Counties count too.'),
+  rankPrompt('Name one of the 15 least populous councils in England', ALL, 'pop', 15, 'asc', popFact, 'ONS mid-2023 estimates.'),
+  rankPrompt('Name one of the 15 biggest councils by area', ALL, 'km2', 15, 'desc', areaFact, 'Land area, from the ONS. Counties count too.'),
+  rankPrompt('Name one of the 15 smallest councils by area', ALL, 'km2', 15, 'asc', areaFact, 'Land area, from the ONS.'),
+  ...['UA','MB','LB','D'].flatMap(t => [
+    rankPrompt(`Name one of the 10 most populous ${TYPE_PLURAL[t]}`, isT(t), 'pop', 10, 'desc', popFact, 'ONS mid-2023 estimates.'),
+    rankPrompt(`Name one of the 10 least populous ${TYPE_PLURAL[t]}`, isT(t), 'pop', 10, 'asc', popFact, 'ONS mid-2023 estimates.')
+  ]),
+  rankPrompt('Name one of the 5 most populous county councils', isT('CC'), 'pop', 5, 'desc', popFact, 'ONS mid-2023 estimates.'),
+  rankPrompt('Name one of the 5 least populous county councils', isT('CC'), 'pop', 5, 'asc', popFact, 'ONS mid-2023 estimates.'),
+  rankPrompt('Name one of the 10 biggest district councils by area', isT('D'), 'km2', 10, 'desc', areaFact, 'Land area, from the ONS.'),
+  rankPrompt('Name one of the 10 biggest unitary authorities by area', isT('UA'), 'km2', 10, 'desc', areaFact, 'Land area, from the ONS.'),
+  rankPrompt('Name one of the 5 biggest London boroughs by area', isT('LB'), 'km2', 5, 'desc', areaFact, 'Land area, from the ONS.'),
+  rankPrompt('Name one of the 5 smallest London boroughs by area', isT('LB'), 'km2', 5, 'asc', areaFact, 'Land area, from the ONS.'),
+  rankPrompt('Name one of the 10 councils with the most councillors', ALL, 'seats', 10, 'desc', seatFact),
+  rankPrompt('Name one of the 10 councils with the fewest councillors', ALL, 'seats', 10, 'asc', seatFact)
+];
+
+/* CQC adult social care assessments, 2023–2026 round. Outstanding: Barking and Dagenham, Camden,
+   Kensington and Chelsea (CQC), Wigan (March 2026). Inadequate: Blackpool, East Riding of Yorkshire,
+   Salford (May 2026). CQC's own totals: 4 outstanding, 3 inadequate.                          */
+const CQC = {'Barking and Dagenham':'Outstanding', Camden:'Outstanding', 'Kensington and Chelsea':'Outstanding', Wigan:'Outstanding',
+  Blackpool:'Inadequate', 'East Riding of Yorkshire':'Inadequate', Salford:'Inadequate'};
+GROUPS3_FACT.inspection = [
+  F('Name one of the 4 councils rated Outstanding by the CQC for adult social care', c => CQC[c.name] === 'Outstanding', c => CQC[c.name] === 'Outstanding' ? `CQC rated ${c.name} Outstanding.` : `${c.name} wasn’t one of the four rated Outstanding.`, 'CQC’s first round of council assessments, 2023 to 2026.'),
+  F('Name one of the 3 councils rated Inadequate by the CQC for adult social care', c => CQC[c.name] === 'Inadequate', c => CQC[c.name] === 'Inadequate' ? `CQC rated ${c.name} Inadequate.` : `${c.name} wasn’t one of the three rated Inadequate.`, 'CQC’s first round of council assessments, 2023 to 2026.')
+];
+
+/* Strategic authorities, from Open Council Data UK (2026). */
+const SA = [
+  ['Greater London Authority','Sadiq Khan','LAB',['Barking and Dagenham','Barnet','Bexley','Brent','Bromley','Camden','Croydon','Ealing','Enfield','Greenwich','Hackney','Hammersmith and Fulham','Haringey','Harrow','Havering','Hillingdon','Hounslow','Islington','Kensington and Chelsea','Kingston upon Thames','Lambeth','Lewisham','Merton','Newham','Redbridge','Richmond upon Thames','Southwark','Sutton','Tower Hamlets','Waltham Forest','Wandsworth','Westminster','City of London'],['london','gla','greater london']],
+  ['Greater Manchester Combined Authority','Andy Burnham','LAB',['Manchester','Bolton','Bury','Oldham','Rochdale','Salford','Stockport','Tameside','Trafford','Wigan'],['greater manchester','gmca']],
+  ['Liverpool City Region Combined Authority','Steve Rotheram','LAB',['Knowsley','Liverpool','Sefton','St Helens','Wirral','Halton'],['liverpool city region','lcr','lcrca']],
+  ['West Midlands Combined Authority','Richard Parker','LAB',['Birmingham','Coventry','Dudley','Sandwell','Solihull','Walsall','Wolverhampton'],['west midlands','wmca']],
+  ['West Yorkshire Combined Authority','Tracy Brabin','LAB',['Leeds','Bradford','Calderdale','Kirklees','Wakefield'],['west yorkshire','wyca']],
+  ['South Yorkshire Mayoral Combined Authority','Oliver Coppard','LAB',['Barnsley','Doncaster','Rotherham','Sheffield'],['south yorkshire','symca']],
+  ['North East Mayoral Strategic Authority','Kim McGuinness','LAB',['Newcastle upon Tyne','Gateshead','North Tyneside','South Tyneside','Sunderland','County Durham','Northumberland'],['north east','north east combined authority','nema']],
+  ['Tees Valley Combined Authority','Ben Houchen','CON',['Darlington','Hartlepool','Middlesbrough','Redcar and Cleveland','Stockton-on-Tees'],['tees valley','tvca']],
+  ['West of England Mayoral Combined Authority','Helen Godwin','LAB',['Bath and North East Somerset','Bristol','South Gloucestershire'],['west of england','weca']],
+  ['Cambridgeshire and Peterborough Combined Authority','Paul Bristow','CON',['Cambridgeshire','Cambridge','East Cambridgeshire','Fenland','Huntingdonshire','South Cambridgeshire','Peterborough'],['cambridgeshire and peterborough','cpca']],
+  ['East Midlands Combined County Authority','Claire Ward','LAB',['Derbyshire','Derby','Nottinghamshire','Nottingham'],['east midlands','emcca']],
+  ['York and North Yorkshire Combined Authority','David Skaith','LAB',['York','North Yorkshire'],['york and north yorkshire','north yorkshire']],
+  ['Greater Lincolnshire Combined County Authority','Andrea Jenkyns','REF',['Lincolnshire','North Lincolnshire','North East Lincolnshire'],['greater lincolnshire','lincolnshire']],
+  ['Hull and East Yorkshire Combined Authority','Luke Campbell','REF',['Kingston upon Hull','East Riding of Yorkshire'],['hull and east yorkshire','hull and east riding']],
+  ['Cheshire and Warrington Combined Authority','','',['Cheshire East','Cheshire West and Chester','Warrington'],['cheshire and warrington']],
+  ['Cumbria Combined Authority','','',['Cumberland','Westmorland and Furness'],['cumbria']],
+  ['Devon and Torbay Combined County Authority','','',['Devon','Torbay'],['devon and torbay']],
+  ['Hampshire and the Solent Combined County Authority','','',['Hampshire','Isle of Wight','Portsmouth','Southampton'],['hampshire and the solent','hampshire and solent']],
+  ['Lancashire Combined County Authority','','',['Lancashire','Blackpool','Blackburn with Darwen'],['lancashire']],
+  ['Sussex and Brighton Combined County Authority','','',['East Sussex','West Sussex','Brighton and Hove'],['sussex and brighton','sussex']]
+];
+const SA_OF = {}; SA.forEach(a => a[3].forEach(n => SA_OF[n] = a));
+const saFact = c => { const a = SA_OF[c.name]; return !a ? `${c.name} isn’t a member of a strategic authority yet.` : a[1] ? `${c.name} is in the ${a[0]}, whose mayor is ${a[1]}.` : `${c.name} is in the ${a[0]}, which has no elected mayor.`; };
+/* Lord mayoralties: 24 in England (Wikipedia list). Chester's sits with Cheshire West and Chester. */
+const LORD_MAYORS = ['Birmingham','Bradford','Bristol','Canterbury','Cheshire West and Chester','Coventry','Exeter','Kingston upon Hull','Leeds','Leicester','Liverpool','City of London','Manchester','Newcastle upon Tyne','Norwich','Nottingham','Oxford','Plymouth','Portsmouth','Sheffield','Southampton','Stoke-on-Trent','Westminster','York'];
+const A = (name, f, aliases = [], fact = '') => ({name, f, aliases, fact});
+const famous = {'Sadiq Khan':5,'Andy Burnham':5,'Ben Houchen':4,'Steve Rotheram':3,'Tracy Brabin':3,'Andrea Jenkyns':3,'Richard Parker':2,'Kim McGuinness':2,'Oliver Coppard':2,'Luke Campbell':2,'Claire Ward':1,'Helen Godwin':1,'Paul Bristow':1,'David Skaith':1};
+GROUPS3_FACT.mayoral = [
+  {text:'Name a regional or metro mayor in England', note:'The 14 strategic authority mayors, including the Mayor of London.', miss:'That isn’t one of England’s 14 regional mayors.',
+   answers: SA.filter(a => a[1]).map(a => A(a[1], famous[a[1]] || 1, [a[1].split(' ').pop(), ...(a[1] === 'Sadiq Khan' ? ['sadiq'] : [])], `${a[1]} is mayor of the ${a[0]}.`))},
+  {text:'Name a strategic authority with an elected mayor', note:'Combined authorities, combined county authorities and the Greater London Authority.', miss:'That isn’t one of the 14 mayoral strategic authorities.',
+   answers: SA.filter(a => a[1]).map(a => A(a[0], ({'Greater London Authority':5,'Greater Manchester Combined Authority':5,'West Midlands Combined Authority':4,'Liverpool City Region Combined Authority':4,'West Yorkshire Combined Authority':3,'South Yorkshire Mayoral Combined Authority':3,'Tees Valley Combined Authority':3,'North East Mayoral Strategic Authority':2})[a[0]] || 1, a[4], `Its mayor is ${a[1]}.`))},
+  F('Name a council in an area with an elected regional mayor', c => SA_OF[c.name] && SA_OF[c.name][1], saFact, 'Constituent members of the 14 mayoral strategic authorities, London boroughs included.'),
+  F('Name a council in a strategic authority that has no elected mayor', c => SA_OF[c.name] && !SA_OF[c.name][1], saFact, 'Such as Cumbria, Lancashire or Sussex and Brighton.'),
+  F('Name a council in an area with a Reform UK regional mayor', c => SA_OF[c.name] && SA_OF[c.name][2] === 'REF', saFact, 'Greater Lincolnshire, and Hull and East Yorkshire.'),
+  F('Name a council in an area with a Conservative regional mayor', c => SA_OF[c.name] && SA_OF[c.name][2] === 'CON', saFact, 'Tees Valley, and Cambridgeshire and Peterborough.'),
+  F('Name a council whose civic head is a Lord Mayor', c => LORD_MAYORS.includes(c.name), c => LORD_MAYORS.includes(c.name) ? `${c.name} has a Lord Mayor.` : `${c.name}’s civic head isn’t a Lord Mayor.`, 'England has 24 lord mayoralties. Chester’s counts as Cheshire West and Chester.')
+];
+
+/* Council-owned companies. Children's services trusts: the 10 council areas run by a trust in 2026
+   (Worcestershire 2024, Reading 2025 and Doncaster 2022 took services back in-house).
+   ALMOs: the 15 members of the National Federation of ALMOs.                                     */
+const TRUSTS = [
+  ['Achieving for Children', 4, ['afc'], ['Kingston upon Thames','Richmond upon Thames','Windsor and Maidenhead']],
+  ['Birmingham Children’s Trust', 4, ['birmingham childrens trust','bct'], ['Birmingham']],
+  ['Bradford Children and Families Trust', 2, ['bradford childrens trust','bradford children and families','bcft'], ['Bradford']],
+  ['Northamptonshire Children’s Trust', 3, ['northamptonshire childrens trust','nct','children first northamptonshire'], ['North Northamptonshire','West Northamptonshire']],
+  ['Sandwell Children’s Trust', 2, ['sandwell childrens trust','sct'], ['Sandwell']],
+  ['Slough Children First', 2, ['slough children first','slough childrens trust','slough childrens services trust','scf'], ['Slough']],
+  ['Together for Children', 2, ['together for children sunderland','tfc'], ['Sunderland']]
+];
+const ALMOS = [
+  ['Barnet Homes',2,[],'Barnet'], ['Berneslai Homes',2,['berneslai'],'Barnsley'], ['Blackpool Coastal Housing',2,[],'Blackpool'],
+  ['Colchester Borough Homes',2,[],'Colchester'], ['Cornwall Housing',3,[],'Cornwall'], ['Derby Homes',3,[],'Derby'],
+  ['Homes in Somerset',1,[],'Somerset'], ['Northamptonshire Partnership Homes',1,['nph'],'West Northamptonshire'],
+  ['Shropshire Towns and Rural Housing',1,['star housing','str housing','shropshire towns and rural'],'Shropshire'],
+  ['Solihull Community Housing',2,[],'Solihull'], ['South Essex Homes',1,[],'Southend-on-Sea'],
+  ['St Leger Homes of Doncaster',2,['st leger homes','st leger'],'Doncaster'], ['Stockport Homes',3,[],'Stockport'],
+  ['Sutton Housing Partnership',1,[],'Sutton'], ['Wolverhampton Homes',3,[],'Wolverhampton']
+];
+const TRUST_OF = {}; TRUSTS.forEach(t => t[3].forEach(n => TRUST_OF[n] = t[0]));
+const ALMO_OF = {}; ALMOS.forEach(a => ALMO_OF[a[3]] = a[0]);
+GROUPS3_FACT.companies = [
+  {text:'Name a trust or company that runs a council’s children’s services', note:'The seven running children’s services for councils in 2026.', miss:'That isn’t one of the seven children’s services trusts or companies.',
+   answers: TRUSTS.map(t => A(t[0], t[1], t[2], `${t[0]} runs children’s services for ${t[3].join(', ').replace(/, ([^,]*)$/, ' and $1')}.`))},
+  F('Name a council whose children’s services are run by a trust or company', c => !!TRUST_OF[c.name], c => TRUST_OF[c.name] ? `${c.name}’s children’s services are run by ${TRUST_OF[c.name]}.` : `${c.name} runs its own children’s services.`, 'Ten council areas in 2026.'),
+  {text:'Name an arm’s-length council housing company (ALMO)', note:'A company a council owns to manage its council homes. The 15 members of the National Federation of ALMOs.', miss:'That isn’t one of the 15 ALMOs being counted.',
+   answers: ALMOS.map(a => A(a[0], a[1], a[2], `${a[0]} manages council homes for ${a[3]}.`))},
+  F('Name a council whose council homes are managed by an ALMO', c => !!ALMO_OF[c.name], c => ALMO_OF[c.name] ? `${c.name}’s homes are managed by ${ALMO_OF[c.name]}.` : `${c.name} doesn’t have an ALMO in the National Federation of ALMOs.`, 'The 15 ALMOs in the National Federation of ALMOs.')
+];
+
+/* Roles in a council: statutory officers (Local Government and Housing Act 1989, LGA 1972,
+   Children Act 2004, LASSA 1970, Health and Social Care Act 2012, RPA 1983) and member roles. */
+GROUPS3_FACT.roles = [
+  {text:'Name a statutory officer role that councils must appoint', note:'Jobs the law requires a council to fill. Some apply only to councils that run social care.', miss:'That isn’t one of the statutory officer roles being counted.',
+   answers: [
+     A('Head of Paid Service', 4, ['chief executive','chief exec','ceo','head of the paid service'], 'Usually the chief executive.'),
+     A('Monitoring Officer', 4, ['monitoring','legal monitoring officer'], 'Makes sure the council acts lawfully.'),
+     A('Section 151 Officer', 4, ['s151 officer','s151','section 151','chief finance officer','cfo','director of finance','finance director'], 'The chief finance officer.'),
+     A('Director of Children’s Services', 3, ['dcs','director of childrens services','childrens services director'], 'Required for councils with education and children’s social care.'),
+     A('Director of Adult Social Services', 3, ['dass','director of adult social services','director of adult social care','adult social care director'], 'Required for councils with adult social care.'),
+     A('Director of Public Health', 2, ['dph','public health director'], 'Required for upper-tier councils since 2013.'),
+     A('Electoral Registration Officer', 1, ['ero','electoral registration'], 'Keeps the electoral register.'),
+     A('Returning Officer', 1, ['returning','acting returning officer'], 'Runs elections.'),
+     A('Scrutiny Officer', 1, ['statutory scrutiny officer','designated scrutiny officer'], 'Supports scrutiny in county and unitary councils.'),
+     A('Proper Officer', 1, ['the proper officer'], 'Named officer for specific legal duties.')
+   ]},
+  {text:'Name a role a councillor can hold on a council', note:'Elected member roles, from leadership to committees.', miss:'That isn’t one of the councillor roles being counted.',
+   answers: [
+     A('Leader of the Council', 5, ['leader','council leader'], ''),
+     A('Deputy Leader', 4, ['deputy leader of the council','deputy council leader'], ''),
+     A('Cabinet Member', 4, ['cabinet','portfolio holder','cabinet member','executive member','lead member'], ''),
+     A('Mayor', 4, ['civic mayor','lord mayor','elected mayor','directly elected mayor','town mayor'], ''),
+     A('Chair of the Council', 3, ['chairman','chair','chairman of the council','council chair','chairperson'], ''),
+     A('Scrutiny Committee Chair', 2, ['scrutiny chair','chair of scrutiny','overview and scrutiny chair','scrutiny'], ''),
+     A('Leader of the Opposition', 2, ['opposition leader','opposition group leader'], ''),
+     A('Group Leader', 2, ['party group leader','political group leader'], ''),
+     A('Planning Committee Chair', 2, ['planning chair','chair of planning','planning committee','planning committee member'], ''),
+     A('Chief Whip', 1, ['whip','group whip'], ''),
+     A('Audit Committee Chair', 1, ['audit chair','chair of audit','audit committee','audit and governance chair'], ''),
+     A('Licensing Committee Chair', 1, ['licensing chair','chair of licensing','licensing committee'], ''),
+     A('Deputy Mayor', 1, ['deputy lord mayor','vice chair','vice chairman','deputy chair'], ''),
+     A('Champion', 1, ['member champion','armed forces champion','councillor champion'], '')
+   ]}
+];
+
+/* Index for answer-list prompts */
+function matchAnswer(p, text){
+  if (!p._idx){
+    p._idx = new Map();
+    p.answers.forEach(a => [a.name, ...a.aliases].forEach(k => { const n = norm(k); if (n && !p._idx.has(n)) p._idx.set(n, a); }));
+  }
+  const n = norm(text).replace(/^the /, '');
+  if (p._idx.has(n)) return p._idx.get(n);
+  const tol = n.length <= 4 ? 0 : n.length <= 8 ? 1 : 2;
+  let best = null, bd = 99;
+  if (tol) for (const [k, a] of p._idx){ if (k.length < 4) continue; const d = lev(n, k); if (d < bd){ bd = d; best = a; } }
+  return bd <= tol ? best : null;
+}
 const NEW_FROM = '2026-11-24', FACTS_FROM = '2026-11-26';
 const ROUND_CACHE = {};
 function dayStr(ms){ return new Date(ms).toISOString().slice(0, 10); }
@@ -1032,6 +1197,17 @@ function evaluate(i, text){
   const p = S.prompts[i];
   const res = { input: text || '', name:'', tier:-1, pts:0, share:null, reason:'' };
   if (!text){ res.reason = 'Time ran out.'; return res; }
+  if (p.answers){
+    const a = matchAnswer(p, text);
+    if (!a){ res.reason = p.miss || 'That isn’t one of the answers being counted here.'; return res; }
+    res.name = a.name; res.fact = a.fact || '';
+    const base = WEIGHT[a.f-1] / p.total;
+    const cs = crowdShare(i, a.name);
+    res.share = cs ? (cs.count + K*base) / (cs.n + K) : base;
+    res.crowdN = cs ? cs.n : 0;
+    res.tier = tierFor(res.share); res.pts = TIERS[res.tier].pts;
+    return res;
+  }
   const hits = lookup(text);
   const ok = hits.find(c => p.valid.includes(c));
   if (!ok){
@@ -1132,7 +1308,7 @@ function home(){
     <p class="small" style="margin:0">Seven random prompts, as often as you like. Practice scores aren’t saved.</p>
     <div class="row"><button class="btn ghost" id="practice">Play a practice round</button></div>
   </section>
-  <p class="foot">Based on England’s principal councils as they stand in 2026: 21 county, 164 district, 62 unitary, 36 metropolitan, 32 London boroughs, plus the City of London and the Isles of Scilly. Councils due to merge from 2027 still count until they’re abolished. Councillor numbers and party control are from Wikipedia’s tables of council make-up (mid-2026), population from ONS mid-2023 estimates, and area from the ONS.</p>`;
+  <p class="foot">Based on England’s principal councils as they stand in 2026: 21 county, 164 district, 62 unitary, 36 metropolitan, 32 London boroughs, plus the City of London and the Isles of Scilly. Councils due to merge from 2027 still count until they’re abolished. Councillor numbers and party control are from Wikipedia’s tables of council make-up (mid-2026), population from ONS mid-2023 estimates, and area from the ONS. Strategic authorities and mayors are from Open Council Data UK, adult social care ratings from the CQC, and ALMOs from the National Federation of ALMOs.</p>`;
   const go = document.getElementById('go'); if (go) go.onclick = () => startDaily();
   const see = document.getElementById('see'); if (see) see.onclick = () => { S = {mode:'daily', prompts:dailyPrompts(), results:saved.results, idx:7}; finish(); };
   document.getElementById('practice').onclick = () => { S = {mode:'practice', prompts:practiceRound(), results:[], idx:0}; showPrompt(); };
@@ -1218,7 +1394,7 @@ function submit(text, tries = 0){
   const p = S.prompts[i];
   const ex = examples(p, r.name);
   const t = r.tier >= 0 ? TIERS[r.tier] : null;
-  const pct = r.share != null ? (r.share < 0.01 ? 'under 1%' : '~' + Math.round(r.share * 100) + '%') : '';
+  const pct = r.share != null ? (r.share < 0.01 ? 'Fewer than 1%' : 'About ' + Math.round(r.share * 100) + '%') : '';
   app.innerHTML = `${mast()}
   <section class="notice">
     <div class="notice-head"><span>${S.mode === 'daily' ? 'Agenda item' : 'Practice item'} ${i + 1} of 7</span><span>${S.results.reduce((s, x) => s + x.pts, 0)} pts</span></div>
@@ -1227,7 +1403,7 @@ function submit(text, tries = 0){
   <section class="panel reveal">
     ${t ? `<div class="stamp" style="color:${t.col}">${t.name}</div>
            <div class="pts">+${r.pts} <span>for ${esc(r.name)}</span></div>
-           <p class="small" style="margin:0">${r.tries ? `Got it after ${r.tries} wrong ${r.tries === 1 ? 'try' : 'tries'}. ` : ''}${r.fact ? esc(r.fact) + ' ' : ''}About ${pct} of players would say ${esc(r.name)}.${r.crowdN ? ` Based on ${r.crowdN} other player${r.crowdN === 1 ? '' : 's'} today plus an estimate.` : ''}</p>`
+           <p class="small" style="margin:0">${r.tries ? `Got it after ${r.tries} wrong ${r.tries === 1 ? 'try' : 'tries'}. ` : ''}${r.fact ? esc(r.fact) + ' ' : ''}${pct} of players would say ${esc(r.name)}.${r.crowdN ? ` Based on ${r.crowdN} other player${r.crowdN === 1 ? '' : 's'} today plus an estimate.` : ''}</p>`
         : `<div class="stamp" style="color:var(--alert)">${text ? 'Rejected' : 'No answer'}</div>
            <div class="pts">+0 <span>${text ? 'for “' + esc(text) + '”' : ''}</span></div>
            <p class="small" style="margin:0">${esc(r.reason)}</p>`}
