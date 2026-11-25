@@ -1113,6 +1113,45 @@ GROUPS3_FACT.roles = [
    ]}
 ];
 
+
+/* ---------- Geography (from 27 Nov 2026) ----------
+   National parks: councils that appoint members to each park authority (National Park Authorities
+   (England) Order 2015 as amended; Environment Act 1995 for the Broads, New Forest and South Downs).
+   Mid Devon covers part of Dartmoor but is excluded from appointing; it counts here.
+   Cotswolds: the local authorities named in the 2004 Conservation Board Order, as they are now.
+   Thames: councils the river runs through or along, from Thames Head to Southend (Yantlet Line). */
+const PARKS = {
+  'Peak District': ['Cheshire East','Derbyshire','Staffordshire','Barnsley','Derbyshire Dales','High Peak','Kirklees','North East Derbyshire','Oldham','Sheffield','Staffordshire Moorlands'],
+  'South Downs': ['Hampshire','West Sussex','East Sussex','Brighton and Hove','East Hampshire','Winchester','Chichester','Arun','Horsham','Mid Sussex','Adur','Worthing','Lewes','Wealden','Eastbourne'],
+  'Broads': ['Norfolk','Suffolk','Broadland','Great Yarmouth','North Norfolk','Norwich','South Norfolk','East Suffolk'],
+  'Dartmoor': ['Devon','South Hams','Teignbridge','West Devon','Mid Devon'],
+  'Exmoor': ['Devon','Somerset','North Devon'],
+  'New Forest': ['Hampshire','New Forest','Test Valley','Wiltshire'],
+  'Lake District': ['Cumberland','Westmorland and Furness'],
+  'Yorkshire Dales': ['North Yorkshire','Westmorland and Furness','Lancashire','Lancaster'],
+  'North York Moors': ['North Yorkshire','Redcar and Cleveland'],
+  'Northumberland': ['Northumberland']
+};
+const PARKS_OF = {}; Object.entries(PARKS).forEach(([k, v]) => v.forEach(n => (PARKS_OF[n] = PARKS_OF[n] || []).push(k)));
+const parkName = k => k === 'Broads' ? 'the Broads' : `the ${k} National Park`;
+const parkFact = c => PARKS_OF[c.name] ? `${c.name} covers part of ${PARKS_OF[c.name].map(parkName).join(' and ')}.` : `${c.name} doesn’t cover any of a national park.`;
+const COTSWOLDS = ['Gloucestershire','Cotswold','Stroud','Tewkesbury','Cheltenham','Oxfordshire','West Oxfordshire','Cherwell','Warwickshire','Stratford-on-Avon','Worcestershire','Wychavon','Wiltshire','Bath and North East Somerset','South Gloucestershire'];
+const THAMES = ['Gloucestershire','Cotswold','Wiltshire','Swindon','Oxfordshire','West Oxfordshire','Vale of White Horse','Oxford','South Oxfordshire','West Berkshire','Reading','Wokingham','Buckinghamshire','Windsor and Maidenhead','Surrey','Runnymede','Spelthorne','Elmbridge',
+  'Richmond upon Thames','Kingston upon Thames','Hounslow','Hammersmith and Fulham','Wandsworth','Kensington and Chelsea','Lambeth','Westminster','City of London','Southwark','Tower Hamlets','Lewisham','Greenwich','Newham','Barking and Dagenham','Bexley','Havering',
+  'Thurrock','Essex','Castle Point','Southend-on-Sea','Kent','Dartford','Gravesham','Medway'];
+const BORDER_WALES = ['Cheshire West and Chester','Shropshire','Herefordshire','Gloucestershire','Forest of Dean'];
+const BORDER_SCOTLAND = ['Northumberland','Cumberland'];
+const inList = (list, yes, no) => c => list.includes(c.name) ? yes(c) : no(c);
+GROUPS3_FACT.geography = [
+  F('Name a council with part of a national park in its area', c => !!PARKS_OF[c.name], parkFact, 'Any of England’s 10 national parks, the Broads included. Based on which councils sit on each park authority.'),
+  ...['Peak District','South Downs','Broads','Dartmoor','Yorkshire Dales','New Forest'].map(k =>
+    F(`Name a council that covers part of ${parkName(k)}`, c => PARKS[k].includes(c.name), parkFact, 'Based on which councils sit on the park authority. County councils count too.')),
+  F('Name a council that covers part of the Cotswolds', c => COTSWOLDS.includes(c.name), inList(COTSWOLDS, c => `${c.name} covers part of the Cotswolds National Landscape.`, c => `${c.name} doesn’t cover any of the Cotswolds National Landscape.`), 'The Cotswolds National Landscape (AONB). County councils count too.'),
+  F('Name a council the River Thames runs through or along', c => THAMES.includes(c.name), inList(THAMES, c => `The Thames runs through or along ${c.name}.`, c => `The Thames doesn’t run through ${c.name}.`), 'From its source at Thames Head to the estuary at Southend. Either bank counts, and county councils count too.'),
+  F('Name a London borough on the River Thames', c => c.t === 'LB' && THAMES.includes(c.name), inList(THAMES, c => `The Thames runs along ${c.name}.`, c => `${c.name} isn’t on the Thames.`), 'Either bank counts.'),
+  F('Name a council outside London that the River Thames runs through or along', c => c.region !== 'London' && THAMES.includes(c.name), inList(THAMES, c => `The Thames runs through or along ${c.name}.`, c => `The Thames doesn’t run through ${c.name}.`), 'From Thames Head in Gloucestershire to the estuary. County councils count too.'),
+  F('Name a council on England’s border with Wales or Scotland', c => BORDER_WALES.includes(c.name) || BORDER_SCOTLAND.includes(c.name), c => BORDER_WALES.includes(c.name) ? `${c.name} borders Wales.` : BORDER_SCOTLAND.includes(c.name) ? `${c.name} borders Scotland.` : `${c.name} doesn’t border Wales or Scotland.`, 'Land borders only. County councils count too.')
+];
 /* Index for answer-list prompts */
 function matchAnswer(p, text){
   if (!p._idx){
@@ -1144,9 +1183,9 @@ function roundTexts(date){
     }
   };
   // From 26 Nov: four fact questions (party, councillors, population, area…) and three name questions a day.
-  if (date >= FACTS_FROM) take(GROUPS3_FACT, 4);
+  if (date >= FACTS_FROM) take(date >= '2026-11-27' ? GROUPS3_FACT : Object.fromEntries(Object.entries(GROUPS3_FACT).filter(([k]) => k !== 'geography')), 4);
   take(GROUPS2, 7);
-  const all = {...GROUPS2, ...(date >= FACTS_FROM ? GROUPS3_FACT : {})};
+  const all = {...GROUPS2, ...(date >= FACTS_FROM ? GROUPS3_FACT : {})}; if (date < '2026-11-27') delete all.geography;
   for (const g of shuffle(Object.keys(all), r)){ if (out.length === 7) break; const p = prepare(all[g][0]); if (!out.some(q => q.text === p.text)) out.push(p); }
   return (ROUND_CACHE[date] = date >= FACTS_FROM ? shuffle(out, r) : out);
 }
@@ -1308,7 +1347,7 @@ function home(){
     <p class="small" style="margin:0">Seven random prompts, as often as you like. Practice scores aren’t saved.</p>
     <div class="row"><button class="btn ghost" id="practice">Play a practice round</button></div>
   </section>
-  <p class="foot">Based on England’s principal councils as they stand in 2026: 21 county, 164 district, 62 unitary, 36 metropolitan, 32 London boroughs, plus the City of London and the Isles of Scilly. Councils due to merge from 2027 still count until they’re abolished. Councillor numbers and party control are from Wikipedia’s tables of council make-up (mid-2026), population from ONS mid-2023 estimates, and area from the ONS. Strategic authorities and mayors are from Open Council Data UK, adult social care ratings from the CQC, and ALMOs from the National Federation of ALMOs.</p>`;
+  <p class="foot">Based on England’s principal councils as they stand in 2026: 21 county, 164 district, 62 unitary, 36 metropolitan, 32 London boroughs, plus the City of London and the Isles of Scilly. Councils due to merge from 2027 still count until they’re abolished. Councillor numbers and party control are from Wikipedia’s tables of council make-up (mid-2026), population from ONS mid-2023 estimates, and area from the ONS. Strategic authorities and mayors are from Open Council Data UK, adult social care ratings from the CQC, and ALMOs from the National Federation of ALMOs. National parks follow each park authority’s member councils, set in law.</p>`;
   const go = document.getElementById('go'); if (go) go.onclick = () => startDaily();
   const see = document.getElementById('see'); if (see) see.onclick = () => { S = {mode:'daily', prompts:dailyPrompts(), results:saved.results, idx:7}; finish(); };
   document.getElementById('practice').onclick = () => { S = {mode:'practice', prompts:practiceRound(), results:[], idx:0}; showPrompt(); };
