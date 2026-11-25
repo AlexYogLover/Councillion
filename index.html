@@ -581,7 +581,387 @@ const GROUPS2 = {
   ],
   mbnorth: [P('Name a metropolitan borough outside Greater Manchester', c => c.t === 'MB' && c.area !== 'Greater Manchester')]
 };
-const NEW_FROM = '2026-11-24';
+/* ---------- Council facts (used from 26 Nov 2026) ----------
+   Name | councillors | control | population | area km²
+   Councillors and control: Wikipedia, "Political make-up of local councils in the UK"
+   (London, metropolitan and county tables May 2026; unitary July 2026; districts Jan 2026).
+   Control: party code, ":M" majority, ":m" minority administration, NOC no overall control.
+   Population: ONS mid-2023 estimates (counties = sum of their districts).
+   Area: ONS Standard Area Measurements, via mySociety.                                    */
+const FACTS_RAW = `Barking and Dagenham|51|LAB:M|222308|36.0
+Barnet|63|NOC|395007|87.0
+Bexley|45|CON:M|250853|61.0
+Brent|57|NOC|344521|43.0
+Bromley|58|CON:M|331162|150.0
+Camden|55|LAB:M|220903|22.0
+Croydon|70|NOC|397741|86.0
+Ealing|70|LAB:M|375340|56.0
+Enfield|63|NOC|327429|81.0
+Greenwich|55|LAB:M|294113|47.0
+Hackney|57|GRN:M|263282|19.0
+Hammersmith and Fulham|50|LAB:M|186176|16.0
+Haringey|57|NOC|262895|30.0
+Harrow|55|CON:M|263448|50.0
+Havering|55|REF:M|268145|112.0
+Hillingdon|53|CON:M|319018|116.0
+Hounslow|62|LAB:M|295706|56.0
+Islington|51|LAB:M|220584|15.0
+Kensington and Chelsea|50|CON:M|147460|12.0
+Kingston upon Thames|48|LD:M|170454|37.0
+Lambeth|63|NOC|315706|27.0
+Lewisham|54|GRN:M|298708|35.0
+Merton|57|LAB:M|215219|38.0
+Newham|66|NOC|362552|36.0
+Redbridge|63|LAB:M|313392|56.0
+Richmond upon Thames|54|LD:M|195513|57.0
+Southwark|63|NOC|315519|29.0
+Sutton|54|LD:M|211123|44.0
+Tower Hamlets|45|Aspire:M|328626|20.0
+Waltham Forest|60|GRN:M|275980|39.0
+Wandsworth|58|NOC|331456|34.0
+Westminster|54|CON:M|211508|21.0
+City of London|125|IND:M|13462|3.0
+Isles of Scilly|16|IND:M|2229|16.0
+Bolton|60|LAB:m|302383|140.0
+Bury|51|LAB:M|195476|99.0
+Manchester|96|LAB:M|579917|116.0
+Oldham|60|LAB:m|246130|142.0
+Rochdale|60|LAB:M|229756|158.0
+Salford|60|LAB:M|284106|97.0
+Stockport|63|LD:M|299545|126.0
+Tameside|57|NOC|234666|103.0
+Trafford|63|LAB:M|237480|106.0
+Wigan|75|LAB:M|339174|188.0
+Knowsley|45|LAB:M|159243|87.0
+Liverpool|85|LAB:M|503740|112.0
+St Helens|48|REF:M|185982|136.0
+Sefton|66|LAB:M|282745|157.0
+Wirral|66|LAB:m|324852|161.0
+Barnsley|63|REF:M|248449|329.0
+Doncaster|55|REF:M|314176|568.0
+Rotherham|59|LAB:M|271195|287.0
+Sheffield|84|NOC|573252|368.0
+Gateshead|66|REF:M|199139|142.0
+Newcastle upon Tyne|78|NOC|311976|113.0
+North Tyneside|60|LAB:M|211769|82.0
+South Tyneside|54|REF:M|149270|64.0
+Sunderland|75|REF:M|281058|137.0
+Birmingham|101|NOC|1166049|268.0
+Coventry|54|NOC|360702|99.0
+Dudley|72|CON:m|326680|98.0
+Sandwell|72|REF:M|347551|86.0
+Solihull|51|NOC|218793|178.0
+Walsall|60|REF:M|288736|104.0
+Wolverhampton|60|LAB:M|272425|69.0
+Bradford|90|NOC|560194|366.0
+Calderdale|51|REF:M|208735|364.0
+Kirklees|69|NOC|442033|409.0
+Leeds|99|NOC|829413|552.0
+Wakefield|63|REF:M|361786|339.0
+Cambridgeshire|61|LD:M|699573|3046.0
+Derbyshire|64|REF:M|811449|2547.0
+Devon|60|NOC|833408|6564.0
+East Sussex|50|NOC|555484|1709.0
+Essex|75|REF:M|1536118|3458.0
+Gloucestershire|55|LD:m|659276|2653.0
+Hampshire|78|NOC|1428559|3678.0
+Hertfordshire|78|LD:m|1215387|1643.0
+Kent|81|REF:M|1610251|3544.0
+Lancashire|84|REF:M|1270162|2894.0
+Leicestershire|55|REF:m|734015|2083.0
+Lincolnshire|70|REF:M|782808|5937.0
+Norfolk|84|NOC|931943|5384.0
+Nottinghamshire|66|REF:M|844494|2085.0
+Oxfordshire|69|LD:M|750230|2605.0
+Staffordshire|62|REF:M|898521|2620.0
+Suffolk|70|REF:M|776442|3800.0
+Surrey|81|CON:m|1228671|1663.0
+Warwickshire|57|REF:m|617823|1975.0
+West Sussex|70|NOC|900862|1991.0
+Worcestershire|57|NOC|614185|1741.0
+Bath and North East Somerset|59|LD:M|199818|346.0
+Bedford|46|NOC|189891|476.0
+Blackburn with Darwen|51|LAB:M|157503|137.0
+Blackpool|42|LAB:M|142708|35.0
+Bournemouth, Christchurch and Poole|76|NOC|404050|162.0
+Bracknell Forest|41|LAB:m|128351|109.0
+Brighton and Hove|54|LAB:M|279637|83.0
+Bristol|70|GRN:m|482998|110.0
+Buckinghamshire|97|CON:M|566694|1565.0
+Central Bedfordshire|63|IND:m|308302|716.0
+Cheshire East|82|NOC|412458|1166.0
+Cheshire West and Chester|70|LAB:m|365061|920.0
+Cornwall|87|NOC|578324|3545.0
+Cumberland|46|LAB:M|276876|3012.0
+Darlington|50|NOC|110562|197.0
+Derby|51|LAB:m|266460|78.0
+Dorset|82|NOC|384809|2491.0
+County Durham|98|REF:M|532182|2226.0
+East Riding of Yorkshire|67|CON:m|350119|2404.0
+Halton|54|LAB:M|129587|79.0
+Hartlepool|36|REF:m|95366|94.0
+Herefordshire|53|CON:m|189890|2180.0
+Isle of Wight|39|REF:m|140906|380.0
+Kingston upon Hull|57|LD:m|271942|72.0
+Leicester|54|LAB:M|379780|73.0
+Luton|48|LAB:M|231028|43.0
+Medway|59|LAB:M|286800|194.0
+Middlesbrough|46|LAB:M|152650|54.0
+Milton Keynes|57|LD:M|298270|309.0
+North East Lincolnshire|42|REF:m|158335|193.0
+North Lincolnshire|43|CON:M|170087|847.0
+North Northamptonshire|66|REF:M|367991|987.0
+North Somerset|50|NOC|221146|374.0
+North Yorkshire|90|CON:m|627629|8037.0
+Northumberland|67|CON:m|327055|5020.0
+Nottingham|55|LAB:M|329276|75.0
+Peterborough|60|LAB:m|219509|343.0
+Plymouth|57|LAB:M|268736|80.0
+Portsmouth|42|LD:m|210297|40.0
+Reading|48|LAB:M|178196|40.0
+Redcar and Cleveland|59|LAB:m|137938|245.0
+Rutland|27|LD:m|40643|382.0
+Shropshire|74|LD:M|329260|3197.0
+Slough|42|NOC|160713|33.0
+Somerset|110|LD:M|581145|3450.0
+South Gloucestershire|61|NOC|299439|497.0
+Southampton|51|LAB:m|256110|50.0
+Southend-on-Sea|51|NOC|182271|42.0
+Stockton-on-Tees|56|LAB:m|202415|205.0
+Stoke-on-Trent|44|LAB:M|263157|93.0
+Swindon|57|CON:m|238417|230.0
+Telford and Wrekin|54|LAB:M|191915|290.0
+Thurrock|49|REF:M|178201|164.0
+Torbay|36|CON:m|139485|63.0
+Warrington|58|LAB:M|212389|181.0
+West Berkshire|43|LD:M|163367|704.0
+West Northamptonshire|76|REF:M|434349|1377.0
+Westmorland and Furness|65|LD:M|228187|3755.0
+Wiltshire|98|LD:m|517979|3255.0
+Windsor and Maidenhead|41|LD:M|155239|197.0
+Wokingham|54|LD:M|183870|179.0
+York|47|LAB:M|206780|272.0
+Cambridge|42|LAB:M|149963|41.0
+East Cambridgeshire|28|CON:m|91466|651.0
+Fenland|43|CON:M|103537|546.0
+Huntingdonshire|52|NOC|186066|906.0
+South Cambridgeshire|45|LD:M|168541|902.0
+Amber Valley|42|LAB:M|127709|265.0
+Bolsover|37|LAB:M|82829|160.0
+Chesterfield|40|LAB:M|104883|66.0
+Derbyshire Dales|34|NOC|71530|792.0
+Erewash|47|LAB:M|113844|110.0
+High Peak|43|LAB:M|91569|539.0
+North East Derbyshire|53|LAB:M|105035|276.0
+South Derbyshire|36|LAB:M|114050|338.0
+East Devon|60|NOC|156167|814.0
+Exeter|39|LAB:M|137050|47.0
+Mid Devon|42|LD:M|84148|913.0
+North Devon|42|LD:M|100543|1086.0
+South Hams|31|LD:M|90842|887.0
+Teignbridge|47|LD:M|137074|674.0
+Torridge|36|IND:M|68830|984.0
+West Devon|31|NOC|58754|1160.0
+Eastbourne|27|LD:M|103796|44.0
+Hastings|32|NOC|90817|30.0
+Lewes|41|NOC|101356|292.0
+Rother|38|NOC|94862|509.0
+Wealden|45|NOC|164653|833.0
+Basildon|42|LAB:m|190544|110.0
+Braintree|49|CON:M|159957|612.0
+Brentwood|39|NOC|78152|153.0
+Castle Point|39|NOC|89858|45.0
+Chelmsford|57|LD:M|185278|339.0
+Colchester|51|NOC|196998|328.0
+Epping Forest|54|CON:m|135975|339.0
+Harlow|33|CON:M|96040|31.0
+Maldon|31|IND:m|68327|358.0
+Rochford|39|NOC|88188|167.0
+Tendring|48|NOC|153207|336.0
+Uttlesford|39|IND:M|93594|641.0
+Cheltenham|40|LD:M|120255|47.0
+Cotswold|34|LD:M|91490|1165.0
+Forest of Dean|38|GRN:m|89104|526.0
+Gloucester|39|LD:m|134991|41.0
+Stroud|51|GRN:m|124540|461.0
+Tewkesbury|38|NOC|98896|414.0
+Basingstoke and Deane|54|NOC|190198|634.0
+East Hampshire|43|NOC|128440|514.0
+Eastleigh|39|LD:M|140950|80.0
+Fareham|32|CON:M|114155|74.0
+Gosport|28|LD:M|82385|25.0
+Hart|33|NOC|101542|215.0
+Havant|36|NOC|125682|56.0
+New Forest|48|CON:M|175398|752.0
+Rushmoor|39|LAB:m|102908|39.0
+Test Valley|43|CON:M|134461|628.0
+Winchester|45|LD:M|132440|661.0
+Broxbourne|30|CON:M|100042|51.0
+Dacorum|51|LD:m|157827|212.0
+East Hertfordshire|50|NOC|153391|476.0
+Hertsmere|39|NOC|108993|101.0
+North Hertfordshire|51|LAB:m|135596|375.0
+St Albans|56|LD:M|148755|161.0
+Stevenage|39|LAB:M|90146|26.0
+Three Rivers|39|LD:m|94693|89.0
+Watford|36|LD:M|104195|21.0
+Welwyn Hatfield|48|NOC|121749|130.0
+Ashford|47|NOC|138283|581.0
+Canterbury|39|NOC|159939|309.0
+Dartford|42|CON:M|120699|73.0
+Dover|32|LAB:m|118591|315.0
+Folkestone and Hythe|30|NOC|110995|357.0
+Gravesham|39|LAB:M|107737|99.0
+Maidstone|49|NOC|184187|393.0
+Sevenoaks|54|CON:m|121262|369.0
+Swale|47|NOC|155893|373.0
+Thanet|56|LAB:M|140439|104.0
+Tonbridge and Malling|44|CON:m|135206|240.0
+Tunbridge Wells|39|LD:M|117020|331.0
+Burnley|45|NOC|96435|111.0
+Chorley|42|LAB:M|119352|203.0
+Fylde|37|CON:M|83846|166.0
+Hyndburn|35|LAB:M|84261|73.0
+Lancaster|61|NOC|145559|567.0
+Pendle|33|IND:m|97039|169.0
+Preston|48|LAB:M|156411|142.0
+Ribble Valley|40|CON:m|64469|583.0
+Rossendale|30|LAB:M|71541|138.0
+South Ribble|50|LAB:M|113552|113.0
+West Lancashire|45|LAB:m|120703|347.0
+Wyre|50|CON:M|116994|282.0
+Blaby|36|CON:m|105278|130.0
+Charnwood|52|LAB:m|188010|279.0
+Harborough|34|NOC|102581|592.0
+Hinckley and Bosworth|34|LD:M|114970|297.0
+Melton|28|NOC|53237|481.0
+North West Leicestershire|38|NOC|110316|279.0
+Oadby and Wigston|26|LD:M|59623|24.0
+Boston|30|NOC|71367|364.0
+East Lindsey|55|CON:m|145371|1767.0
+Lincoln|33|LAB:M|103314|36.0
+North Kesteven|43|CON:M|121203|922.0
+South Holland|37|CON:M|97915|750.0
+South Kesteven|56|NOC|145758|943.0
+West Lindsey|36|LD:m|97880|1156.0
+Breckland|49|CON:M|145081|1305.0
+Broadland|47|NOC|135565|552.0
+Great Yarmouth|39|CON:m|100065|174.0
+King's Lynn and West Norfolk|55|NOC|155758|1440.0
+North Norfolk|40|LD:M|103228|966.0
+Norwich|39|LAB:m|145591|39.0
+South Norfolk|46|CON:m|146655|908.0
+Ashfield|35|IND:M|128360|110.0
+Bassetlaw|48|LAB:M|122286|638.0
+Broxtowe|44|IND:m|113172|80.0
+Gedling|41|LAB:M|118563|120.0
+Mansfield|36|LAB:M|112091|77.0
+Newark and Sherwood|39|LAB:m|126168|651.0
+Rushcliffe|44|CON:M|123854|409.0
+Cherwell|48|NOC|166321|589.0
+Oxford|48|LAB:m|165184|46.0
+South Oxfordshire|36|LD:M|153424|679.0
+Vale of White Horse|38|LD:M|145970|578.0
+West Oxfordshire|49|NOC|119331|714.0
+Cannock Chase|36|LAB:M|102838|79.0
+East Staffordshire|37|LAB:M|127637|387.0
+Lichfield|47|CON:m|110173|331.0
+Newcastle-under-Lyme|44|CON:M|128060|211.0
+South Staffordshire|42|CON:M|113088|407.0
+Stafford|40|NOC|140677|598.0
+Staffordshire Moorlands|56|LAB:m|95785|576.0
+Tamworth|30|LAB:M|80263|31.0
+Babergh|32|NOC|95872|594.0
+East Suffolk|55|NOC|247100|1261.0
+Ipswich|48|LAB:M|139378|40.0
+Mid Suffolk|34|GRN:M|108029|871.0
+West Suffolk|64|NOC|186063|1035.0
+Elmbridge|48|NOC|140500|95.0
+Epsom and Ewell|35|IND:M|81989|34.0
+Guildford|48|LD:M|149176|271.0
+Mole Valley|39|LD:M|88266|258.0
+Reigate and Banstead|45|CON:m|155985|129.0
+Runnymede|41|NOC|90442|78.0
+Spelthorne|39|NOC|103954|45.0
+Surrey Heath|35|LD:M|92168|95.0
+Tandridge|43|IND:m|89409|248.0
+Waverley|50|NOC|132146|345.0
+Woking|30|LD:M|104636|64.0
+North Warwickshire|35|CON:m|66166|284.0
+Nuneaton and Bedworth|38|LAB:m|137794|79.0
+Rugby|42|LAB:m|118781|351.0
+Stratford-on-Avon|41|LD:M|141929|978.0
+Warwick|44|NOC|153153|283.0
+Adur|29|LAB:M|64687|42.0
+Arun|54|NOC|168008|221.0
+Chichester|36|LD:M|128003|786.0
+Crawley|36|LAB:M|120545|45.0
+Horsham|48|LD:M|149464|530.0
+Mid Sussex|48|NOC|157915|334.0
+Worthing|37|LAB:M|112240|33.0
+Bromsgrove|31|NOC|100679|217.0
+Malvern Hills|31|NOC|81822|577.0
+Redditch|27|LAB:M|87059|54.0
+Worcester|35|LAB:m|105143|33.0
+Wychavon|43|CON:M|136229|664.0
+Wyre Forest|33|CON:M|103253|195.0`;
+FACTS_RAW.split('\n').forEach(l => {
+  const [name, seats, ctl, pop, km2] = l.split('|');
+  const c = COUNCILS.find(x => x.name === name);
+  const [party, kind] = ctl.split(':');
+  Object.assign(c, { seats:+seats, party, majority: kind === 'M', pop:+pop, km2:+km2 });
+  c.density = c.pop / c.km2;
+});
+const ELECTED_MAYORS = ['Bedford','Croydon','Doncaster','Hackney','Leicester','Lewisham','Mansfield','Middlesbrough','Newham','North Tyneside','Salford','Tower Hamlets','Watford'];
+COUNCILS.forEach(c => c.mayor = ELECTED_MAYORS.includes(c.name));
+const PARTY_NAME = {LAB:'Labour', CON:'Conservative', LD:'Liberal Democrat', REF:'Reform UK', GRN:'Green', IND:'Independent', Aspire:'Aspire'};
+const fmt = x => Math.round(x).toLocaleString('en-GB');
+const popFact = c => `${c.name} has about ${fmt(c.pop)} people (mid-2023).`;
+const seatFact = c => `${c.name} has ${c.seats} councillors.`;
+const areaFact = c => `${c.name} covers about ${fmt(c.km2)} km².`;
+const densFact = c => `${c.name} has about ${fmt(c.density)} people per km².`;
+const ctlFact = c => c.t === 'D' ? `${c.name} is a district council, and districts aren’t in party questions yet.`
+  : c.party === 'NOC' ? `${c.name} is in no overall control.`
+  : `${c.name} has a ${PARTY_NAME[c.party]} ${c.majority ? 'majority' : 'minority administration'}.`;
+const F = (text, test, fact, note) => ({text, test, fact, note});
+const notD = c => c.t !== 'D';
+const GROUPS3_FACT = {
+  party: [
+    ...['LAB','CON','LD','REF','GRN'].map(pt => F(`Name a council with a ${PARTY_NAME[pt]} majority`, c => notD(c) && c.party === pt && c.majority, ctlFact, 'County, unitary, metropolitan and London councils, as of mid-2026. Districts aren’t included.')),
+    F('Name a council in no overall control', c => notD(c) && !c.majority, ctlFact, 'No party has a majority of seats. Counts minority and coalition administrations. Districts aren’t included.'),
+    F('Name a council run by a minority administration', c => notD(c) && c.party !== 'NOC' && !c.majority, ctlFact, 'One party in charge without a majority. Districts aren’t included.')
+  ],
+  seats: [
+    F('Name a council with more than 80 councillors', c => c.seats > 80, seatFact),
+    F('Name a council with fewer than 32 councillors', c => c.seats < 32, seatFact),
+    F('Name a council with between 50 and 55 councillors', c => c.seats >= 50 && c.seats <= 55, seatFact),
+    F('Name a council with exactly 60 councillors', c => c.seats === 60, seatFact),
+    F('Name a London borough with 60 or more councillors', c => c.t === 'LB' && c.seats >= 60, seatFact),
+    F('Name a district council with 50 or more councillors', c => c.t === 'D' && c.seats >= 50, seatFact)
+  ],
+  population: [
+    F('Name a council with a population over 1 million', c => c.pop > 1e6, popFact, 'ONS mid-2023 estimates.'),
+    F('Name a council with between 500,000 and 1 million people', c => c.pop >= 5e5 && c.pop <= 1e6, popFact, 'ONS mid-2023 estimates.'),
+    F('Name a council with between 100,000 and 125,000 people', c => c.pop >= 1e5 && c.pop <= 125e3, popFact, 'ONS mid-2023 estimates.'),
+    F('Name a council with fewer than 75,000 people', c => c.pop < 75e3, popFact, 'ONS mid-2023 estimates.'),
+    F('Name a London borough with more than 330,000 people', c => c.t === 'LB' && c.pop > 33e4, popFact, 'ONS mid-2023 estimates.'),
+    F('Name a unitary authority with between 200,000 and 300,000 people', c => c.t === 'UA' && c.pop >= 2e5 && c.pop <= 3e5, popFact, 'ONS mid-2023 estimates.'),
+    F('Name a metropolitan borough with fewer than 250,000 people', c => c.t === 'MB' && c.pop < 25e4, popFact, 'ONS mid-2023 estimates.')
+  ],
+  area: [
+    F('Name a council covering more than 2,500 km²', c => c.km2 > 2500, areaFact, 'Land area, from the ONS.'),
+    F('Name a council smaller than 40 km²', c => c.km2 < 40, areaFact, 'Land area, from the ONS.'),
+    F('Name a district council bigger than 1,000 km²', c => c.t === 'D' && c.km2 > 1000, areaFact, 'Land area, from the ONS.'),
+    F('Name a council with more than 8,000 people per km²', c => c.density > 8000, densFact, 'Population per km² of land.'),
+    F('Name a council with fewer than 100 people per km²', c => c.density < 100, densFact, 'Population per km² of land.')
+  ],
+  ratio: [
+    F('Name a council with more than 8,000 residents per councillor', c => c.pop / c.seats > 8000, c => `${c.name} has about ${fmt(c.pop / c.seats)} residents per councillor.`, 'Population divided by number of councillors.'),
+    F('Name a council with fewer than 2,000 residents per councillor', c => c.pop / c.seats < 2000, c => `${c.name} has about ${fmt(c.pop / c.seats)} residents per councillor.`, 'Population divided by number of councillors.')
+  ],
+  mayor: [F('Name a council led by a directly elected mayor', c => c.mayor, c => c.mayor ? `${c.name} has a directly elected mayor.` : `${c.name} is led by a council leader, not an elected mayor.`, 'Council mayors only. Combined authority and London mayors don’t count.')]
+};
+const NEW_FROM = '2026-11-24', FACTS_FROM = '2026-11-26';
 const ROUND_CACHE = {};
 function dayStr(ms){ return new Date(ms).toISOString().slice(0, 10); }
 function roundTexts(date){
@@ -591,16 +971,23 @@ function roundTexts(date){
   for (let k = 1; k <= 4; k++){ const d = dayStr(Date.parse(date) - k*864e5); if (d >= LAUNCH) roundTexts(d).forEach(p => recent.add(p.text)); }
   const r = rng(hashStr('councillion2-' + date));
   const out = [];
-  for (const g of shuffle(Object.keys(GROUPS2), r)){
-    if (out.length === 7) break;
-    const fresh = GROUPS2[g].filter(p => !recent.has(p.text));
-    if (fresh.length) out.push(prepare(fresh[Math.floor(r()*fresh.length)]));
-  }
-  for (const g of shuffle(Object.keys(GROUPS2), r)){ if (out.length === 7) break; const p = prepare(GROUPS2[g][0]); if (!out.some(q => q.text === p.text)) out.push(p); }
-  return (ROUND_CACHE[date] = out);
+  const take = (groups, max) => {
+    for (const g of shuffle(Object.keys(groups), r)){
+      if (out.length >= max) break;
+      const fresh = groups[g].filter(p => !recent.has(p.text) && !out.some(q => q.text === p.text));
+      if (fresh.length) out.push(prepare(fresh[Math.floor(r()*fresh.length)]));
+    }
+  };
+  // From 26 Nov: four fact questions (party, councillors, population, area…) and three name questions a day.
+  if (date >= FACTS_FROM) take(GROUPS3_FACT, 4);
+  take(GROUPS2, 7);
+  const all = {...GROUPS2, ...(date >= FACTS_FROM ? GROUPS3_FACT : {})};
+  for (const g of shuffle(Object.keys(all), r)){ if (out.length === 7) break; const p = prepare(all[g][0]); if (!out.some(q => q.text === p.text)) out.push(p); }
+  return (ROUND_CACHE[date] = date >= FACTS_FROM ? shuffle(out, r) : out);
 }
 function practiceRound(){
-  return shuffle(Object.keys(GROUPS2), Math.random).slice(0, 7).map(g => { const l = GROUPS2[g]; return prepare(l[Math.floor(Math.random()*l.length)]); });
+  const pick = (groups, n) => shuffle(Object.keys(groups), Math.random).slice(0, n).map(g => { const l = groups[g]; return prepare(l[Math.floor(Math.random()*l.length)]); });
+  return shuffle([...pick(GROUPS3_FACT, 4), ...pick(GROUPS2, 3)], Math.random);
 }
 
 /* ---------- Rarity ---------- */
@@ -650,12 +1037,13 @@ function evaluate(i, text){
   if (!ok){
     if (hits.length){
       const c = hits[0];
-      res.reason = `${c.name} is a ${TYPE_LABEL[c.t]}${c.area && c.t !== 'UA' ? ' in ' + c.area : ''}, so it doesn’t count here.`;
+      res.reason = p.fact ? `${p.fact(c)} So it doesn’t count here.` : `${c.name} is a ${TYPE_LABEL[c.t]}${c.area && c.t !== 'UA' ? ' in ' + c.area : ''}, so it doesn’t count here.`;
       if (c.t === 'SG' && p.text.includes('London borough')) res.reason = 'The City of London is a one-off authority, not a London borough.';
     } else res.reason = 'That isn’t a council name I recognise.';
     return res;
   }
   res.name = ok.name;
+  res.fact = p.fact ? p.fact(ok) : '';
   const base = WEIGHT[ok.f-1] / p.total;
   const cs = crowdShare(i, ok.name);
   res.share = cs ? (cs.count + K*base) / (cs.n + K) : base;
@@ -744,7 +1132,7 @@ function home(){
     <p class="small" style="margin:0">Seven random prompts, as often as you like. Practice scores aren’t saved.</p>
     <div class="row"><button class="btn ghost" id="practice">Play a practice round</button></div>
   </section>
-  <p class="foot">Based on England’s principal councils as they stand in 2026: 21 county, 164 district, 62 unitary, 36 metropolitan, 32 London boroughs, plus the City of London and the Isles of Scilly. Councils due to merge from 2027 still count until they’re abolished.</p>`;
+  <p class="foot">Based on England’s principal councils as they stand in 2026: 21 county, 164 district, 62 unitary, 36 metropolitan, 32 London boroughs, plus the City of London and the Isles of Scilly. Councils due to merge from 2027 still count until they’re abolished. Councillor numbers and party control are from Wikipedia’s tables of council make-up (mid-2026), population from ONS mid-2023 estimates, and area from the ONS.</p>`;
   const go = document.getElementById('go'); if (go) go.onclick = () => startDaily();
   const see = document.getElementById('see'); if (see) see.onclick = () => { S = {mode:'daily', prompts:dailyPrompts(), results:saved.results, idx:7}; finish(); };
   document.getElementById('practice').onclick = () => { S = {mode:'practice', prompts:practiceRound(), results:[], idx:0}; showPrompt(); };
@@ -839,7 +1227,7 @@ function submit(text, tries = 0){
   <section class="panel reveal">
     ${t ? `<div class="stamp" style="color:${t.col}">${t.name}</div>
            <div class="pts">+${r.pts} <span>for ${esc(r.name)}</span></div>
-           <p class="small" style="margin:0">${r.tries ? `Got it after ${r.tries} wrong ${r.tries === 1 ? 'try' : 'tries'}. ` : ''}About ${pct} of players would say ${esc(r.name)}.${r.crowdN ? ` Based on ${r.crowdN} other player${r.crowdN === 1 ? '' : 's'} today plus an estimate.` : ''}</p>`
+           <p class="small" style="margin:0">${r.tries ? `Got it after ${r.tries} wrong ${r.tries === 1 ? 'try' : 'tries'}. ` : ''}${r.fact ? esc(r.fact) + ' ' : ''}About ${pct} of players would say ${esc(r.name)}.${r.crowdN ? ` Based on ${r.crowdN} other player${r.crowdN === 1 ? '' : 's'} today plus an estimate.` : ''}</p>`
         : `<div class="stamp" style="color:var(--alert)">${text ? 'Rejected' : 'No answer'}</div>
            <div class="pts">+0 <span>${text ? 'for “' + esc(text) + '”' : ''}</span></div>
            <p class="small" style="margin:0">${esc(r.reason)}</p>`}
